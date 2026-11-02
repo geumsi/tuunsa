@@ -3,6 +3,9 @@
 
 /* ---------- data ---------- */
 const D = window.QUIZ_DATA || {};
+const CALC = window.CALC_DATA || {questions:[], mockQuota:{}, guide:[]};
+// 계산 문제는 data/calc.js 한 곳에 모아 두고, 각 문항의 area 영역에 합친다.
+CALC.questions.forEach(q => { if(D[q.area] && !D[q.area].questions.some(x => x.id === q.id)) D[q.area].questions.push(q); });
 const SUBJECTS = [
   {n:1, name:"1과목", full:"금융상품 및 세제", exam:20, color:"var(--s1)"},
   {n:2, name:"2과목", full:"투자운용 및 전략Ⅱ · 투자분석", exam:30, color:"var(--s2)"},
@@ -29,6 +32,14 @@ if (S && (!Array.isArray(S.items) || S.items.some(it => !Q[it.qid]))) S = null;
 
 /* ---------- helpers ---------- */
 const $view = document.getElementById("view");
+const kbd = s => esc(s).replace(/`([^`]+)`/g, '<kbd>$1</kbd>');
+const calcHtml = q => !q.calc ? "" : `<div class="calc"><h3>계산기 꿀팁</h3>
+  ${q.calc.formula ? `<p class="formula">${esc(q.calc.formula)}</p>` : ""}
+  ${Array.isArray(q.calc.steps) && q.calc.steps.length ? `<ol class="keys">${q.calc.steps.map(t => `<li>${kbd(t)}</li>`).join("")}</ol>` : ""}
+  ${q.calc.tip ? `<p class="tip"><b>꿀팁</b> ${kbd(q.calc.tip)}</p>` : ""}</div>`;
+const guideHtml = () => !CALC.guide.length ? "" : `<details class="card guide"><summary>계산기 사용법 한눈에 보기</summary>
+  <p class="muted small">계산 문제를 풀면 해설에 그 문제의 키 입력 순서가 함께 나옵니다. 공통으로 쓰는 요령은 아래와 같습니다.</p>
+  ${CALC.guide.map(g => `<div class="gitem"><b>${esc(g.t)}</b><p>${kbd(g.d)}</p></div>`).join("")}</details>`;
 const practiceHtml = q => q.practice ? `<div class="practice"><h3>실무에서는</h3><p>${esc(q.practice)}</p></div>` : "";
 const notesHtml = (q, order, picked) => !Array.isArray(q.choiceNotes) ? "" : `<div class="cnotes"><h3>보기별 해설</h3>${order.map((orig, k) => {
   const n = q.choiceNotes[orig] || {}, isAns = orig === q.answer;
@@ -62,6 +73,8 @@ function startSubject(n){
   const ids = AREAS.filter(a => D[a].subject === n).flatMap(a => D[a].questions.map(q => q.id));
   const s = subjOf(n); start("subject", `${s.name} 전체`, ids);
 }
+const calcIds = () => Object.keys(Q).filter(id => Q[id].calc);
+function startCalc(){ start("calc", "계산 문제", calcIds()); }
 function startWrong(){ start("wrong", "오답노트", wrongIds()); }
 const MOCK_AREAS = () => AREAS.filter(a => D[a].subject > 0 && D[a].examCount > 0);
 const mockPool = () => MOCK_AREAS().reduce((n, a) => n + D[a].questions.length, 0);
@@ -71,12 +84,15 @@ function startMock(){
   // 같은 문제가 반복되지 않도록 모의고사에 덜 나온 문제부터 뽑고, 같은 횟수면 최근에 틀린 문제를 먼저,
   // 그다음은 무작위. 문제은행을 한 바퀴 다 돌아야 같은 문제가 다시 나온다.
   const ids = [];
+  // 계산 문제는 영역별 최소 문항(CALC.mockQuota)을 먼저 채우고, 나머지는 전체에서 같은 기준으로 뽑는다.
   MOCK_AREAS().forEach(a => {
     const n = D[a].examCount;
     const ranked = shuffle(D[a].questions)
       .map(q => ({q, seen: MOCK.seen[q.id] || 0, wrong: STATS[q.id] && STATS[q.id].last === 0 ? 0 : 1}))
       .sort((x, y) => x.seen - y.seen || x.wrong - y.wrong);
-    shuffle(ranked.slice(0, n)).forEach(r => ids.push(r.q.id));
+    const calc = ranked.filter(r => r.q.calc).slice(0, Math.min(n, CALC.mockQuota[a] || 0));
+    const rest = ranked.filter(r => !calc.includes(r)).slice(0, n - calc.length);
+    shuffle(calc.concat(rest)).forEach(r => ids.push(r.q.id));
   });
   ids.forEach(id => { MOCK.seen[id] = (MOCK.seen[id] || 0) + 1; });
   MOCK.runs++; save(K.mock, MOCK);
@@ -101,12 +117,13 @@ function renderHome(){
     ${resume ? `<button class="btn primary block" id="resume">이어서 풀기 · ${esc(S.title)} ${S.i+1}/${S.items.length}</button>` : ""}
     <button class="btn ${resume ? "" : "primary"} block" id="mock">실전 모의고사 100문항 <span class="small" style="font-weight:500">· 실제 출제 비율</span></button>
     <p class="muted small mockinfo">${MOCK.runs ? `모의고사 ${MOCK.runs}회 · 지금까지 출제된 문제 ${mockSeenCount()} / ${mockPool()}` : "풀 때마다 다른 문제가 나옵니다. 문제은행을 한 바퀴 다 돌 때까지 같은 문제는 다시 나오지 않습니다."}</p>
+    <button class="btn block" id="calc">계산 문제만 풀기 <span class="small" style="font-weight:500">· ${calcIds().length}문제, 계산기 꿀팁 포함</span></button>
     <button class="btn block" id="wrong" ${wrong ? "" : "disabled"}>오답노트 ${wrong ? `${wrong}문제 다시 풀기` : "· 아직 틀린 문제 없음"}</button>
     <div class="opts">
       <label><input type="checkbox" id="optQ" ${OPTS.shuffleQ ? "checked" : ""}> 문제 순서 섞기</label>
       <label><input type="checkbox" id="optC" ${OPTS.shuffleC ? "checked" : ""}> 보기 순서 섞기</label>
     </div>
-  </section>`;
+  </section>${guideHtml()}`;
   SUBJECTS.slice().sort((a,b) => (a.n||9) - (b.n||9)).forEach(s => {
     const areas = AREAS.filter(a => D[a].subject === s.n);
     if(!areas.length) return;
@@ -136,7 +153,7 @@ function renderHome(){
     const n = S.items.findIndex((_, i) => S.ans[i] === undefined);
     S.i = n < 0 ? S.items.length : n; save(K.sess, S); renderQuiz();
   });
-  on("mock", startMock); on("wrong", startWrong);
+  on("mock", startMock); on("wrong", startWrong); on("calc", startCalc);
   document.getElementById("optQ").onchange = e => { OPTS.shuffleQ = e.target.checked; save(K.opts, OPTS); };
   document.getElementById("optC").onchange = e => { OPTS.shuffleC = e.target.checked; save(K.opts, OPTS); };
   $view.querySelectorAll("[data-area]").forEach(b => b.onclick = () => startArea(b.dataset.area));
@@ -178,7 +195,7 @@ function renderQuiz(){
     verdict = `<div class="verdict ${correct ? "good" : "bad"}" role="status">
         <span class="mark" aria-hidden="true">${correct ? "O" : "X"}</span><span>${correct ? "정답" : "오답"}</span>
         <span class="ans">${esc(ansText)}</span></div>
-      <div class="explain"><h3>해설</h3><p>${esc(q.explain)}</p>${practiceHtml(q)}${q.type === "mc" ? notesHtml(q, it.order, picked) : ""}${q.ref ? `<div class="ref">정리노트 · ${esc(q.ref)}</div>` : ""}</div>`;
+      <div class="explain"><h3>해설</h3><p>${esc(q.explain)}</p>${calcHtml(q)}${practiceHtml(q)}${q.type === "mc" ? notesHtml(q, it.order, picked) : ""}${q.ref ? `<div class="ref">정리노트 · ${esc(q.ref)}</div>` : ""}</div>`;
   }
   const last = S.i + 1 === S.items.length;
   const answered = Object.keys(S.ans).length;
@@ -187,7 +204,7 @@ function renderQuiz(){
       <button class="linkbtn" id="quit">${answered ? "그만하고 채점" : "나가기"}</button></div>
     <div class="bar" aria-hidden="true"><i style="width:${(S.i + (done?1:0))/S.items.length*100}%"></i></div>
     <article class="card qcard" style="--c:${color}">
-      <span class="tag">${esc(d.title)}</span>
+      <span class="tag">${esc(d.title)}</span>${q.calc ? `<span class="tag" style="--c:var(--warn);margin-left:6px">계산</span>` : ""}
       <p class="qtext">${esc(q.q)}</p>
       ${body}
       ${verdict}
@@ -236,7 +253,7 @@ function renderResult(){
   const pct = rows.length ? Math.round(good/rows.length*100) : 0;
   const wrongRows = rows.filter(r => r.a !== r.q.answer);
   let table = "";
-  if(S.mode === "mock" || S.mode === "subject" || S.mode === "wrong"){
+  if(S.mode === "mock" || S.mode === "subject" || S.mode === "wrong" || S.mode === "calc"){
     const bySubj = {}, byArea = {};
     rows.forEach(r => {
       const sj = D[r.q.area].subject;
@@ -271,7 +288,7 @@ function renderResult(){
     ${wrongRows.length ? `<h2 style="margin:22px 0 10px">틀린 문제 해설</h2><div class="wlist">${wrongRows.map(r => `
       <details class="card witem"><summary>${esc(r.q.q)}</summary>
         <p class="small" style="margin:8px 0 0"><span style="color:var(--bad)">내 답 ${esc(ansLabel(r, r.a))}</span> · <span style="color:var(--good)">정답 ${esc(ansLabel(r, r.q.answer))}</span></p>
-        <div class="explain"><p>${esc(r.q.explain)}</p>${practiceHtml(r.q)}${r.q.type === "mc" ? notesHtml(r.q, r.it.order, r.a) : ""}${r.q.ref ? `<div class="ref">${esc(D[r.q.area].title)} · ${esc(r.q.ref)}</div>` : ""}</div>
+        <div class="explain"><p>${esc(r.q.explain)}</p>${calcHtml(r.q)}${practiceHtml(r.q)}${r.q.type === "mc" ? notesHtml(r.q, r.it.order, r.a) : ""}${r.q.ref ? `<div class="ref">${esc(D[r.q.area].title)} · ${esc(r.q.ref)}</div>` : ""}</div>
       </details>`).join("")}</div>` : `<p class="empty card" style="margin-top:14px">모두 맞혔습니다.</p>`}`;
   const ids = wrongRows.map(r => r.q.id);
   const rt = document.getElementById("retry"); if(rt) rt.onclick = () => start("wrong", "틀린 문제 다시 풀기", ids);
