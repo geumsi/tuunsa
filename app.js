@@ -3,7 +3,9 @@
 
 /* ---------- data ---------- */
 const D = window.QUIZ_DATA || {};
-const CALC = window.CALC_DATA || {questions:[], mockQuota:{}, guide:[]};
+const CALC = window.CALC_DATA || {questions:[], mockQuota:{}};
+const FORMULAS = window.FORMULA_DATA || [];
+const GUIDE = window.CALCGUIDE || null;
 // 계산 문제는 data/calc.js 한 곳에 모아 두고, 각 문항의 area 영역에 합친다.
 CALC.questions.forEach(q => { if(D[q.area] && !D[q.area].questions.some(x => x.id === q.id)) D[q.area].questions.push(q); });
 const SUBJECTS = [
@@ -35,11 +37,10 @@ const $view = document.getElementById("view");
 const kbd = s => esc(s).replace(/`([^`]+)`/g, '<kbd>$1</kbd>');
 const calcHtml = q => !q.calc ? "" : `<div class="calc"><h3>계산기 꿀팁</h3>
   ${q.calc.formula ? `<p class="formula">${esc(q.calc.formula)}</p>` : ""}
-  ${Array.isArray(q.calc.steps) && q.calc.steps.length ? `<ol class="keys">${q.calc.steps.map(t => `<li>${kbd(t)}</li>`).join("")}</ol>` : ""}
-  ${q.calc.tip ? `<p class="tip"><b>꿀팁</b> ${kbd(q.calc.tip)}</p>` : ""}</div>`;
-const guideHtml = () => !CALC.guide.length ? "" : `<details class="card guide"><summary>계산기 사용법 한눈에 보기</summary>
-  <p class="muted small">계산 문제를 풀면 해설에 그 문제의 키 입력 순서가 함께 나옵니다. 공통으로 쓰는 요령은 아래와 같습니다.</p>
-  ${CALC.guide.map(g => `<div class="gitem"><b>${esc(g.t)}</b><p>${kbd(g.d)}</p></div>`).join("")}</details>`;
+  ${Array.isArray(q.calc.steps) && q.calc.steps.length ? `<h4>일반 계산기</h4><ol class="keys">${q.calc.steps.map(t => `<li>${kbd(t)}</li>`).join("")}</ol>` : ""}
+  ${q.calc.sci ? `<h4>공학용 계산기 <span class="muted">fx-570 계열</span></h4><p class="keys1">${kbd(q.calc.sci)}</p>` : ""}
+  ${q.calc.tip ? `<p class="tip"><b>꿀팁</b> ${kbd(q.calc.tip)}</p>` : ""}
+  <a class="calclink" href="#calculator">계산기 사용법 자세히 보기 →</a></div>`;
 const practiceHtml = q => q.practice ? `<div class="practice"><h3>실무에서는</h3><p>${esc(q.practice)}</p></div>` : "";
 const notesHtml = (q, order, picked) => !Array.isArray(q.choiceNotes) ? "" : `<div class="cnotes"><h3>보기별 해설</h3>${order.map((orig, k) => {
   const n = q.choiceNotes[orig] || {}, isAns = orig === q.answer;
@@ -101,6 +102,7 @@ function startMock(){
 
 /* ---------- home ---------- */
 function renderHome(){
+  setTab("quiz");
   document.title = "투운사 모의고사";
   const total = Object.keys(Q).length;
   const seen = Object.keys(STATS).filter(id => Q[id]).length;
@@ -123,7 +125,11 @@ function renderHome(){
       <label><input type="checkbox" id="optQ" ${OPTS.shuffleQ ? "checked" : ""}> 문제 순서 섞기</label>
       <label><input type="checkbox" id="optC" ${OPTS.shuffleC ? "checked" : ""}> 보기 순서 섞기</label>
     </div>
-  </section>${guideHtml()}`;
+  </section>
+  <div class="links2">
+    <a class="card linkcard" href="#formulas"><b>공식 암기</b><span>외워야 할 공식 ${FORMULAS.reduce((n, g) => n + g.items.length, 0)}개를 영역별로, 가리고 외우기 가능</span></a>
+    <a class="card linkcard" href="#calculator"><b>계산기 사용법</b><span>일반·공학용 어떤 걸 쓸지, 키 누르는 법, 시험장 요령</span></a>
+  </div>`;
   SUBJECTS.slice().sort((a,b) => (a.n||9) - (b.n||9)).forEach(s => {
     const areas = AREAS.filter(a => D[a].subject === s.n);
     if(!areas.length) return;
@@ -169,6 +175,7 @@ function renderHome(){
 /* ---------- quiz ---------- */
 function renderQuiz(){
   if(!S) return renderHome();
+  setTab("quiz");
   if(S.i >= S.items.length) return renderResult();
   const it = S.items[S.i], q = Q[it.qid], d = D[q.area], color = areaColor(q.area);
   const picked = S.ans[S.i];             // ox: true/false, mc: original choice index
@@ -296,6 +303,138 @@ function renderResult(){
   window.scrollTo(0,0);
 }
 
+
+/* ---------- tabs ---------- */
+function setTab(name){
+  document.querySelectorAll("#tabs a").forEach(a => a.classList.toggle("on", a.dataset.tab === name));
+}
+function route(initial){
+  const h = location.hash;
+  if(h === "#formulas") return renderFormulas();
+  if(h === "#calculator") return renderCalcGuide();
+  if(!initial && S && S.i < S.items.length) return renderQuiz();
+  renderHome();
+}
+// 공식·계산기 탭에서 문제를 시작할 때는 주소의 #을 지워 '문제 풀기' 탭으로 돌아온다.
+function startFromTab(fn){ history.replaceState(null, "", location.pathname + location.search); fn(); }
+
+/* ---------- 공식 암기 ---------- */
+function renderFormulas(){
+  setTab("formulas");
+  document.title = "공식 암기 · 투운사 모의고사";
+  const hide = !!OPTS.hideF;
+  const total = FORMULAS.reduce((n, g) => n + g.items.length, 0);
+  let h = `<section class="card hero">
+    <h2>외워야 할 공식 ${total}개</h2>
+    <p class="muted small">시험에 나오는 계산 공식만 영역별로 모았습니다. '가리고 외우기'를 켜면 공식이 가려지고, 눌러야 보입니다. 공식 옆 <b>문제</b> 버튼으로 그 공식을 쓰는 계산 문제를 바로 풀 수 있습니다.</p>
+    <div class="opts"><label><input type="checkbox" id="optHide" ${hide ? "checked" : ""}> 가리고 외우기</label></div>
+    <button class="btn primary block" id="calcAll">계산 문제 전체 ${calcIds().length}개 풀기</button>
+  </section>`;
+  SUBJECTS.filter(sj => sj.n).forEach(sj => {
+    const groups = FORMULAS.filter(g => D[g.area] && D[g.area].subject === sj.n);
+    if(!groups.length) return;
+    h += `<section class="subject" style="--c:${sj.color}">
+      <div class="subject-head"><span class="dot"></span><h2>${esc(sj.name)}</h2><span class="sub">${esc(sj.full)}</span></div>
+      ${groups.map(g => {
+        const cq = D[g.area].questions.filter(q => q.calc).map(q => q.id);
+        return `<div class="card fgroup">
+          <div class="fhead"><b>${esc(D[g.area].title)}</b>${cq.length ? `<button class="btn small-btn" data-qs="${cq.join(",")}" data-title="${esc(D[g.area].title)} 계산 문제">계산 문제 ${cq.length}개</button>` : ""}</div>
+          ${g.items.map(it => `<div class="fitem${hide ? " hid" : ""}">
+            <div class="fname">${esc(it.name)}${it.qs ? `<button class="linkbtn fq" data-qs="${it.qs.join(",")}" data-title="${esc(it.name)}">문제 →</button>` : ""}</div>
+            <button class="fbody" aria-label="${esc(it.name)} 공식 보기"><span class="ff">${esc(it.f)}</span><span class="fm">${esc(it.memo || "")}</span><span class="fcover">눌러서 보기</span></button>
+          </div>`).join("")}
+        </div>`;
+      }).join("")}
+    </section>`;
+  });
+  $view.innerHTML = h;
+  document.getElementById("optHide").onchange = e => { OPTS.hideF = e.target.checked; save(K.opts, OPTS); renderFormulas(); };
+  document.getElementById("calcAll").onclick = () => startFromTab(startCalc);
+  $view.querySelectorAll("[data-qs]").forEach(b => b.onclick = () => startFromTab(() => start("calc", b.dataset.title, b.dataset.qs.split(",").filter(id => Q[id]))));
+  $view.querySelectorAll(".fitem.hid .fbody").forEach(b => b.onclick = () => b.parentNode.classList.toggle("show"));
+  window.scrollTo(0,0);
+}
+
+/* ---------- 계산기 사용법 ---------- */
+// 그림용 키 배치. n: 설명 번호 배지, hl: 강조 테두리, s: SHIFT 기능(키 위 노란 글씨)
+const CALC_MODELS = {
+  basic: {name:"일반 계산기", cols:4, kw:62, kh:42, lcd:["", "1,325.4901"], rows:[
+    [{l:"MC",k:"fn",hl:1},{l:"MR",k:"fn",hl:1},{l:"M−",k:"fn",hl:1},{l:"M+",k:"fn",n:2}],
+    [{l:"√",k:"fn",n:3},{l:"%",k:"fn",n:6},{l:"GT",k:"fn",n:4},{l:"AC",k:"ac",n:1}],
+    ["7","8","9",{l:"÷",k:"op",hl:1}],
+    ["4","5","6",{l:"×",k:"op",n:5}],
+    ["1","2","3",{l:"−",k:"op"}],
+    ["0",".",{l:"=",k:"eq",n:7},{l:"+",k:"op"}]]},
+  sci: {name:"공학용 계산기 (fx-570 계열)", cols:5, kw:52, kh:32, shift:true, lcd:["500÷1.06+10500÷1.06²", "9816.660733"], rows:[
+    [{l:"SHIFT",k:"shift",n:2},{l:"ALPHA",k:"fn"},{l:"◀",k:"fn",hl:1},{l:"▶",k:"fn",hl:1},{l:"MODE",k:"fn",s:"SETUP"}],
+    [{l:"x⁻¹",k:"fn"},{l:"√■",k:"fn",s:"³√■",n:4},{l:"x²",k:"fn",hl:1},{l:"x^■",k:"fn",s:"ˣ√■",n:3},{l:"log",k:"fn"}],
+    [{l:"(−)",k:"fn",n:9},{l:"(",k:"fn",n:5},{l:")",k:"fn",hl:1},{l:"S⇔D",k:"fn",n:6},{l:"M+",k:"fn",s:"M−"}],
+    ["7","8",{l:"9",s:"CLR",n:1},{l:"DEL",k:"ac",n:8},{l:"AC",k:"ac"}],
+    ["4","5","6",{l:"×",k:"op"},{l:"÷",k:"op"}],
+    ["1","2","3",{l:"+",k:"op"},{l:"−",k:"op"}],
+    ["0",".",{l:"×10ˣ",k:"num"},{l:"Ans",k:"num",n:7},{l:"=",k:"eq",s:"≈"}]]}
+};
+function calcSvg(id){
+  const m = CALC_MODELS[id], gap = 8, pad = 16, sh = m.shift ? 12 : 0;
+  const W = pad*2 + m.cols*m.kw + (m.cols-1)*gap, lcdH = 64, top = pad + 18 + lcdH + 14;
+  const H = top + m.rows.length*(m.kh + gap + sh) + pad;
+  let g = `<rect class="cz-body" x="0" y="0" width="${W}" height="${H}" rx="20"/>
+    <text class="cz-brand" x="${pad}" y="${pad+10}">${esc(m.name)}</text>
+    <rect class="cz-lcd" x="${pad}" y="${pad+18}" width="${W-pad*2}" height="${lcdH}" rx="6"/>
+    <text class="cz-lcd1" x="${pad+8}" y="${pad+38}">${esc(m.lcd[0])}</text>
+    <text class="cz-lcd2" x="${W-pad-8}" y="${pad+18+lcdH-12}" text-anchor="end">${esc(m.lcd[1])}</text>`;
+  m.rows.forEach((row, r) => row.forEach((key, c) => {
+    const k = typeof key === "string" ? {l:key, k:"num"} : Object.assign({k:"num"}, key);
+    const x = pad + c*(m.kw+gap), y = top + r*(m.kh+gap+sh) + sh;
+    if(k.s) g += `<text class="cz-shift" x="${x + m.kw/2}" y="${y-3}" text-anchor="middle">${esc(k.s)}</text>`;
+    g += `<rect class="cz-key cz-${k.k}${k.n || k.hl ? " cz-hl" : ""}" x="${x}" y="${y}" width="${m.kw}" height="${m.kh}" rx="7"/>
+      <text class="cz-kt cz-t-${k.k}" x="${x + m.kw/2}" y="${y + m.kh/2 + 5}" text-anchor="middle"${k.l.length > 3 ? ` style="font-size:11px"` : ""}>${esc(k.l)}</text>`;
+    if(k.n) g += `<circle class="cz-badge" cx="${x + m.kw - 2}" cy="${y + 2}" r="9"/><text class="cz-bt" x="${x + m.kw - 2}" y="${y + 6}" text-anchor="middle">${k.n}</text>`;
+  }));
+  return `<svg class="calcsvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(m.name)} 키 배치 그림. 번호는 아래 설명과 짝을 이룹니다.">${g}</svg>`;
+}
+function renderCalcGuide(){
+  setTab("calculator");
+  document.title = "계산기 사용법 · 투운사 모의고사";
+  if(!GUIDE){ $view.innerHTML = `<p class="empty card">안내를 불러오지 못했습니다.</p>`; return; }
+  const steps = a => `<ol class="keys">${a.map(t => `<li>${kbd(t)}</li>`).join("")}</ol>`;
+  const numbered = list => `<ol class="numlist">${list.map(x => `<li><span class="nb">${x.n}</span><div><b>${esc(x.t)}</b><p>${kbd(x.d)}</p></div></li>`).join("")}</ol>`;
+  $view.innerHTML = `
+    <section class="card hero">
+      <h2>계산기, 어떤 걸 어떻게 쓰나</h2>
+      <p class="muted small">계산기를 거의 안 써 본 사람 기준으로 정리했습니다. 이 사이트의 계산 문제 해설에도 일반·공학용 키 순서가 함께 나옵니다.</p>
+      <button class="btn primary block" id="calcGo">계산 문제 ${calcIds().length}개 풀어 보기</button>
+    </section>
+    <section class="card gsec rule">
+      <h3>${esc(GUIDE.rule.title)}</h3>
+      <ul>${GUIDE.rule.points.map(t => `<li>${esc(t)}</li>`).join("")}</ul>
+      <a href="https://license.kofia.or.kr" target="_blank" rel="noopener" class="small">금융투자협회 자격시험센터 →</a>
+    </section>
+    <h2 class="gh">일반 · 공학용 · 재무용 비교</h2>
+    <div class="cmp">${GUIDE.compare.map(c => `<div class="card cmpcard">
+      <b class="ct">${esc(c.type)}</b><span class="muted small">${esc(c.ex)}</span>
+      <ul class="good">${c.good.map(t => `<li>${esc(t)}</li>`).join("")}</ul>
+      <ul class="bad">${c.bad.map(t => `<li>${esc(t)}</li>`).join("")}</ul>
+      <p class="fit"><b>맞는 사람</b> ${esc(c.fit)}</p></div>`).join("")}</div>
+    <p class="card verdict2">${esc(GUIDE.verdict)}</p>
+    <h2 class="gh">일반 계산기 사용법</h2>
+    <div class="card gsec twocol"><div class="pic">${calcSvg("basic")}</div>${numbered(GUIDE.basic)}</div>
+    <h2 class="gh">공학용 계산기 사용법</h2>
+    <div class="card gsec twocol"><div class="pic">${calcSvg("sci")}</div>${numbered(GUIDE.sci)}</div>
+    <p class="muted small">그림은 키 위치를 설명하기 위한 단순화된 배치입니다. 실제 기종마다 키 위치와 이름이 조금씩 다릅니다.</p>
+    <h2 class="gh">같은 문제, 두 계산기로 풀기</h2>
+    ${GUIDE.examples.map(e => `<div class="card gsec ex">
+      <b>${esc(e.title)}</b>
+      <p class="formula">${esc(e.formula)} <span class="muted">= ${esc(e.answer)}</span></p>
+      <div class="excols"><div><h4>일반 계산기</h4>${steps(e.basic)}</div><div><h4>공학용 계산기</h4>${steps(e.sci)}</div></div>
+      ${e.fin ? `<p class="small fin">${kbd(e.fin)}</p>` : ""}
+    </div>`).join("")}
+    <h2 class="gh">시험장 요령</h2>
+    <div class="card gsec"><ol class="numlist">${GUIDE.exam.map((x, i) => `<li><span class="nb">${i+1}</span><div><b>${esc(x.t)}</b><p>${kbd(x.d)}</p></div></li>`).join("")}</ol></div>`;
+  document.getElementById("calcGo").onclick = () => startFromTab(startCalc);
+  window.scrollTo(0,0);
+}
+
 /* ---------- theme ---------- */
 const THEMES = ["system","light","dark"];
 let theme = load(K.theme, "system");
@@ -322,6 +461,7 @@ document.addEventListener("keydown", e => {
   else if(k === "arrowleft" && S.i){ S.i--; save(K.sess, S); renderQuiz(); }
 });
 
-document.getElementById("homeBtn").onclick = renderHome;
-renderHome();
+document.getElementById("homeBtn").onclick = () => { if(location.hash) history.replaceState(null, "", location.pathname + location.search); renderHome(); };
+window.addEventListener("hashchange", () => route(false));
+route(true);
 })();
