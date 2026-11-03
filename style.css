@@ -246,3 +246,36 @@ table.sc td.num,table.sc th.num{text-align:right;font-variant-numeric:tabular-nu
 .cz-hl{stroke:#f5c518;stroke-width:2.5}
 .cz-badge{fill:#f5c518;stroke:#2a2e35;stroke-width:2}
 .cz-bt{fill:#1b1d21;font:800 11px var(--font)}
+
+/* work mode: 문서처럼 보이는 무채색 톤 */
+.topbtns{display:flex;gap:6px}
+#workBtn[aria-pressed="true"]{color:var(--ink);border-color:var(--ink)}
+:root[data-work]{
+  --accent:#3f4652; --accent-ink:#ffffff; --accent-soft:#eceef1;
+  --good:#3f4652; --good-soft:#eef0f2; --bad:#7a5d58; --bad-soft:#f4efee; --warn:#5f5a4f; --warn-soft:#f2f1ee;
+  --s0:#5d6572; --s1:#5d6572; --s2:#5d6572; --s3:#5d6572;
+}
+@media (prefers-color-scheme: dark){:root[data-work]:not([data-theme="light"]){
+  --accent:#c4c9d1; --accent-ink:#14161a; --accent-soft:#2a2e35;
+  --good:#c4c9d1; --good-soft:#262a30; --bad:#c9aaa5; --bad-soft:#2e2627; --warn:#bdb6a6; --warn-soft:#2a2823;
+  --s0:#9aa2ad; --s1:#9aa2ad; --s2:#9aa2ad; --s3:#9aa2ad;
+}}
+:root[data-work][data-theme="dark"]{
+  --accent:#c4c9d1; --accent-ink:#14161a; --accent-soft:#2a2e35;
+  --good:#c4c9d1; --good-soft:#262a30; --bad:#c9aaa5; --bad-soft:#2e2627; --warn:#bdb6a6; --warn-soft:#2a2823;
+  --s0:#9aa2ad; --s1:#9aa2ad; --s2:#9aa2ad; --s3:#9aa2ad;
+}
+:root[data-work] .bar{display:none}
+:root[data-work] .verdict{font-size:.95rem;padding:8px 12px}
+:root[data-work] .verdict .mark{width:28px;height:28px;font-size:1rem;border-width:2px;animation:none}
+:root[data-work] .brand{color:var(--muted)}
+
+/* cover: Esc 두 번으로 덮는 메모 화면 */
+#cover{position:fixed;inset:0;z-index:100;overflow:auto;background:#fff;color:#1f2328;font-family:var(--font);padding:40px 16px}
+#cover .memo{max-width:760px;margin:0 auto;line-height:1.75}
+#cover h1{font-size:1.5rem;margin:4px 0 20px;font-weight:700}
+#cover h2{font-size:1.02rem;margin:22px 0 6px;font-weight:700}
+#cover ul{margin:0;padding-left:20px}
+#cover .memo-meta,#cover .memo-foot{color:#6b7280;font-size:.85rem;margin:0}
+#cover .memo-foot{margin-top:32px;border-top:1px solid #e5e7eb;padding-top:10px}
+body.covered{overflow:hidden}

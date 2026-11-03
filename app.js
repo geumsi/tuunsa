@@ -23,7 +23,7 @@ const subjOf = n => SUBJECTS.find(s => s.n === n);
 const areaColor = id => subjOf(D[id].subject).color;
 
 /* ---------- storage ---------- */
-const K = {stats:"tuunsa-stats", sess:"tuunsa-session", opts:"tuunsa-opts", theme:"tuunsa-theme", mock:"tuunsa-mock"};
+const K = {stats:"tuunsa-stats", sess:"tuunsa-session", opts:"tuunsa-opts", theme:"tuunsa-theme", mock:"tuunsa-mock", work:"tuunsa-work"};
 function load(k, d){ try{ const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; }catch(e){ return d; } }
 function save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
 let STATS = load(K.stats, {});
@@ -103,7 +103,7 @@ function startMock(){
 /* ---------- home ---------- */
 function renderHome(){
   setTab("quiz");
-  document.title = "투운사 모의고사";
+  setTitle("");
   const total = Object.keys(Q).length;
   const seen = Object.keys(STATS).filter(id => Q[id]).length;
   const good = Object.keys(STATS).filter(id => Q[id] && STATS[id].last === 1).length;
@@ -181,7 +181,7 @@ function renderQuiz(){
   const picked = S.ans[S.i];             // ox: true/false, mc: original choice index
   const done = picked !== undefined;
   const correct = done && picked === q.answer;
-  document.title = `${S.i+1}/${S.items.length} · 투운사 모의고사`;
+  setTitle(`${S.i+1}/${S.items.length}`);
   let body;
   if(q.type === "ox"){
     const cls = v => !done ? "" : (v === q.answer ? "correct" : (v === picked ? "wrong" : ""));
@@ -254,7 +254,7 @@ function next(){
 /* ---------- result ---------- */
 function renderResult(){
   if(!S) return renderHome();
-  document.title = "결과 · 투운사 모의고사";
+  setTitle(["결과","요약"]);
   const rows = S.items.map((it, i) => ({it, q:Q[it.qid], a:S.ans[i]})).filter(r => r.a !== undefined);
   const good = rows.filter(r => r.a === r.q.answer).length;
   const pct = rows.length ? Math.round(good/rows.length*100) : 0;
@@ -321,7 +321,7 @@ function startFromTab(fn){ history.replaceState(null, "", location.pathname + lo
 /* ---------- 공식 암기 ---------- */
 function renderFormulas(){
   setTab("formulas");
-  document.title = "공식 암기 · 투운사 모의고사";
+  setTitle(["공식 암기","용어집"]);
   const hide = !!OPTS.hideF;
   const total = FORMULAS.reduce((n, g) => n + g.items.length, 0);
   let h = `<section class="card hero">
@@ -395,7 +395,7 @@ function calcSvg(id){
 }
 function renderCalcGuide(){
   setTab("calculator");
-  document.title = "계산기 사용법 · 투운사 모의고사";
+  setTitle(["계산기 사용법","참고자료"]);
   if(!GUIDE){ $view.innerHTML = `<p class="empty card">안내를 불러오지 못했습니다.</p>`; return; }
   const steps = a => `<ol class="keys">${a.map(t => `<li>${kbd(t)}</li>`).join("")}</ol>`;
   const numbered = list => `<ol class="numlist">${list.map(x => `<li><span class="nb">${x.n}</span><div><b>${esc(x.t)}</b><p>${kbd(x.d)}</p></div></li>`).join("")}</ol>`;
@@ -450,9 +450,65 @@ function applyTheme(){
 document.getElementById("themeBtn").onclick = () => { theme = THEMES[(THEMES.indexOf(theme)+1) % 3]; save(K.theme, theme); applyTheme(); };
 applyTheme();
 
+/* ---------- work mode & cover ---------- */
+// 업무모드: 이름·탭 제목·아이콘·색을 문서처럼 바꾼다. 커버: Esc 두 번(모바일은 상단 버튼)으로 화면 전체를 메모로 가린다.
+let WORK = !!load(K.work, false), COVER = false, titleP = "", realTitle = document.title;
+const appName = () => WORK ? "Weekly Brief" : "투운사 모의고사";
+function setTitle(p){   // p: 문자열 또는 [평소, 업무모드]
+  titleP = p; const t = Array.isArray(p) ? p[WORK ? 1 : 0] : p;
+  realTitle = t ? `${t} · ${appName()}` : appName(); if(!COVER) document.title = realTitle;
+}
+const ICONS = {
+  quiz: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232557d6'/%3E%3Cpath d='M16 40l10-12 8 7 14-17' stroke='white' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E",
+  doc: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='10' y='4' width='44' height='56' rx='6' fill='%236b7280'/%3E%3Cpath d='M20 20h24M20 30h24M20 40h16' stroke='white' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E"
+};
+const TABNAMES = {quiz:["문제 풀기","브리핑"], formulas:["공식 암기","용어집"], calculator:["계산기 사용법","참고자료"]};
+function applyWork(){
+  const root = document.documentElement;
+  if(WORK) root.setAttribute("data-work", ""); else root.removeAttribute("data-work");
+  document.querySelector(".brand-text").innerHTML = WORK ? "<b>Weekly Brief</b><small>내부 검토 자료</small>" : "<b>투운사 모의고사</b><small>투자자산운용사 2026</small>";
+  document.querySelectorAll("#tabs a").forEach(a => { a.textContent = TABNAMES[a.dataset.tab][WORK ? 1 : 0]; });
+  document.querySelector('link[rel="icon"]').href = WORK ? ICONS.doc : ICONS.quiz;
+  const b = document.getElementById("workBtn");
+  b.setAttribute("aria-pressed", WORK); b.title = WORK ? "업무모드 끄기" : "업무모드 켜기";
+  document.getElementById("coverBtn").hidden = !WORK;
+  setTitle(titleP);
+}
+const today = () => { const d = new Date(); return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`; };
+function setCover(on){
+  COVER = on;
+  let c = document.getElementById("cover");
+  if(on && !c){
+    c = document.createElement("div"); c.id = "cover";
+    c.innerHTML = `<article class="memo">
+      <p class="memo-meta">내부 검토 · ${today()} 작성</p>
+      <h1>주간 시장 점검 메모</h1>
+      <h2>1. 금리</h2><ul><li>기준금리 경로에 대한 시장 기대 변화 점검</li><li>국고채 단기물·장기물 스프레드 추이 확인</li><li>크레딧 스프레드 및 발행 시장 동향 정리</li></ul>
+      <h2>2. 환율</h2><ul><li>원/달러 변동성 확대 구간 점검, 헤지 비율 재검토 필요 여부 확인</li><li>주요 통화 대비 달러 흐름 요약</li></ul>
+      <h2>3. 주식</h2><ul><li>업종별 실적 발표 일정 정리</li><li>외국인 수급 변화 및 주요 지수 리밸런싱 일정 확인</li></ul>
+      <h2>4. 다음 주 확인 사항</h2><ul><li>주요 경제지표 발표 일정 공유</li><li>포트폴리오 리스크 한도 사용률 점검</li><li>회의 자료 초안 수요일까지 공유</li></ul>
+      <p class="memo-foot">작성 중 · 무단 배포 금지</p></article>`;
+    c.addEventListener("dblclick", () => setCover(false));
+    document.body.appendChild(c);
+  }
+  if(c) c.hidden = !on;
+  document.body.classList.toggle("covered", on);
+  document.title = on ? "주간 시장 점검 메모" : realTitle;
+  document.querySelector('link[rel="icon"]').href = on || WORK ? ICONS.doc : ICONS.quiz;
+}
+let lastEsc = 0;
+document.addEventListener("keydown", e => {
+  if(e.key !== "Escape") return;
+  const now = Date.now();
+  if(now - lastEsc < 600){ lastEsc = 0; setCover(!COVER); } else lastEsc = now;
+});
+document.getElementById("workBtn").onclick = () => { WORK = !WORK; save(K.work, WORK); applyWork(); };
+document.getElementById("coverBtn").onclick = () => setCover(true);
+applyWork();
+
 /* ---------- keyboard ---------- */
 document.addEventListener("keydown", e => {
-  if(e.metaKey || e.ctrlKey || e.altKey || !S || S.i >= S.items.length || !$view.querySelector(".qcard")) return;
+  if(COVER || e.metaKey || e.ctrlKey || e.altKey || !S || S.i >= S.items.length || !$view.querySelector(".qcard")) return;
   if(e.target instanceof HTMLInputElement) return;
   const q = Q[S.items[S.i].qid], done = S.ans[S.i] !== undefined, k = e.key.toLowerCase();
   if(!done && q.type === "ox" && (k === "o" || k === "x")){ e.preventDefault(); answer(k === "o"); }
