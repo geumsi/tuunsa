@@ -279,3 +279,13 @@ table.sc td.num,table.sc th.num{text-align:right;font-variant-numeric:tabular-nu
 #cover .memo-meta,#cover .memo-foot{color:#6b7280;font-size:.85rem;margin:0}
 #cover .memo-foot{margin-top:32px;border-top:1px solid #e5e7eb;padding-top:10px}
 body.covered{overflow:hidden}
+
+/* 해설 글머리표·암기 박스 */
+.explain p + p,.crow p + p{margin-top:6px}
+.explain ul,.crow ul{margin:4px 0 0;padding-left:1.2em}
+.explain li,.crow li{margin:2px 0}
+.explain li::marker,.crow li::marker{color:var(--muted)}
+.explain p + ul,.crow p + ul{margin-top:2px}
+.explain .memo{margin-top:12px;padding:10px 12px;border-radius:8px;background:var(--accent-soft)}
+.explain .memo h3{margin:0 0 2px;color:var(--accent)}
+.explain .memo ul{margin:0}

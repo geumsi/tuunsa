@@ -41,11 +41,21 @@ const calcHtml = q => !q.calc ? "" : `<div class="calc"><h3>계산기 꿀팁</h3
   ${q.calc.sci ? `<h4>공학용 계산기 <span class="muted">fx-570 계열</span></h4><p class="keys1">${kbd(q.calc.sci)}</p>` : ""}
   ${q.calc.tip ? `<p class="tip"><b>꿀팁</b> ${kbd(q.calc.tip)}</p>` : ""}
   <a class="calclink" href="#calculator">계산기 사용법 자세히 보기 →</a></div>`;
-const practiceHtml = q => q.practice ? `<div class="practice"><h3>실무에서는</h3><p>${esc(q.practice)}</p></div>` : "";
+// "· "로 시작하는 줄은 글머리표 목록으로, 나머지 줄은 문단으로 보여준다.
+const rich = t => String(t || "").split("\n").reduce((acc, line) => {
+  const li = /^·\s*/.test(line);
+  const last = acc[acc.length - 1];
+  if(li && last && last.ul) last.items.push(line.replace(/^·\s*/, ""));
+  else if(li) acc.push({ul:true, items:[line.replace(/^·\s*/, "")]});
+  else if(line.trim()) acc.push({ul:false, text:line});
+  return acc;
+}, []).map(b => b.ul ? `<ul>${b.items.map(i => `<li>${esc(i)}</li>`).join("")}</ul>` : `<p>${esc(b.text)}</p>`).join("");
+const memoHtml = q => Array.isArray(q.memo) && q.memo.length ? `<div class="memo"><h3>암기</h3><ul>${q.memo.map(m => `<li>${esc(m)}</li>`).join("")}</ul></div>` : "";
+const practiceHtml = q => q.practice ? `<div class="practice"><h3>실무에서는</h3>${rich(q.practice)}</div>` : "";
 const notesHtml = (q, order, picked) => !Array.isArray(q.choiceNotes) ? "" : `<div class="cnotes"><h3>보기별 해설</h3>${order.map((orig, k) => {
   const n = q.choiceNotes[orig] || {}, isAns = orig === q.answer;
   const tag = isAns ? `<span class="ctag good">정답</span>` : (orig === picked ? `<span class="ctag bad">내 선택</span>` : "");
-  const row = (label, t) => t ? `<div class="crow"><b>${label}</b><p>${esc(t)}</p></div>` : "";
+  const row = (label, t) => t ? `<div class="crow"><b>${label}</b><div>${rich(t)}</div></div>` : "";
   return `<div class="cnote${isAns ? " ans" : ""}"><div class="chead"><span class="n">${k+1}</span><span class="ctext">${esc(q.choices[orig])}</span>${tag}</div>${row("용어", n.term)}${row("이론", n.theory)}${row("실무", n.practice)}</div>`;
 }).join("")}</div>`;
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -202,7 +212,7 @@ function renderQuiz(){
     verdict = `<div class="verdict ${correct ? "good" : "bad"}" role="status">
         <span class="mark" aria-hidden="true">${correct ? "O" : "X"}</span><span>${correct ? "정답" : "오답"}</span>
         <span class="ans">${esc(ansText)}</span></div>
-      <div class="explain"><h3>해설</h3><p>${esc(q.explain)}</p>${calcHtml(q)}${practiceHtml(q)}${q.type === "mc" ? notesHtml(q, it.order, picked) : ""}${q.ref ? `<div class="ref">정리노트 · ${esc(q.ref)}</div>` : ""}</div>`;
+      <div class="explain"><h3>해설</h3>${rich(q.explain)}${memoHtml(q)}${calcHtml(q)}${practiceHtml(q)}${q.type === "mc" ? notesHtml(q, it.order, picked) : ""}${q.ref ? `<div class="ref">정리노트 · ${esc(q.ref)}</div>` : ""}</div>`;
   }
   const last = S.i + 1 === S.items.length;
   const answered = Object.keys(S.ans).length;
@@ -295,7 +305,7 @@ function renderResult(){
     ${wrongRows.length ? `<h2 style="margin:22px 0 10px">틀린 문제 해설</h2><div class="wlist">${wrongRows.map(r => `
       <details class="card witem"><summary>${esc(r.q.q)}</summary>
         <p class="small" style="margin:8px 0 0"><span style="color:var(--bad)">내 답 ${esc(ansLabel(r, r.a))}</span> · <span style="color:var(--good)">정답 ${esc(ansLabel(r, r.q.answer))}</span></p>
-        <div class="explain"><p>${esc(r.q.explain)}</p>${calcHtml(r.q)}${practiceHtml(r.q)}${r.q.type === "mc" ? notesHtml(r.q, r.it.order, r.a) : ""}${r.q.ref ? `<div class="ref">${esc(D[r.q.area].title)} · ${esc(r.q.ref)}</div>` : ""}</div>
+        <div class="explain">${rich(r.q.explain)}${memoHtml(r.q)}${calcHtml(r.q)}${practiceHtml(r.q)}${r.q.type === "mc" ? notesHtml(r.q, r.it.order, r.a) : ""}${r.q.ref ? `<div class="ref">${esc(D[r.q.area].title)} · ${esc(r.q.ref)}</div>` : ""}</div>
       </details>`).join("")}</div>` : `<p class="empty card" style="margin-top:14px">모두 맞혔습니다.</p>`}`;
   const ids = wrongRows.map(r => r.q.id);
   const rt = document.getElementById("retry"); if(rt) rt.onclick = () => start("wrong", "틀린 문제 다시 풀기", ids);
