@@ -51,7 +51,11 @@ const rich = t => String(t || "").split("\n").reduce((acc, line) => {
   return acc;
 }, []).map(b => b.ul ? `<ul>${b.items.map(i => `<li>${esc(i)}</li>`).join("")}</ul>` : `<p>${esc(b.text)}</p>`).join("");
 const memoHtml = q => Array.isArray(q.memo) && q.memo.length ? `<div class="memo"><h3>암기</h3><ul>${q.memo.map(m => `<li>${esc(m)}</li>`).join("")}</ul></div>` : "";
-const practiceHtml = q => q.practice ? `<div class="practice"><h3>실무에서는</h3>${rich(q.practice)}</div>` : "";
+// 사례: real은 출처가 있는 실제 사례, example은 가상의 예시
+const caseHtml = c => !c || !c.text ? "" : `<div class="case ${c.type === "real" ? "real" : "ex"}">
+  <p class="case-h"><span class="case-tag">${c.type === "real" ? `실제 사례${c.year ? ` · ${esc(c.year)}` : ""}` : "가상 사례"}</span>${c.title ? `<b>${esc(c.title)}</b>` : ""}</p>
+  ${rich(c.text)}${c.type === "real" && /^https:\/\//.test(c.src || "") ? `<a class="case-src" href="${esc(c.src)}" target="_blank" rel="noopener noreferrer">출처: ${esc(c.srcName || c.src.replace(/^https:\/\/(www\.)?/, "").split("/")[0])}</a>` : ""}</div>`;
+const practiceHtml = q => q.practice || q.case ? `<div class="practice"><h3>실무에서는</h3>${rich(q.practice)}${caseHtml(q.case)}</div>` : "";
 const notesHtml = (q, order, picked) => !Array.isArray(q.choiceNotes) ? "" : `<div class="cnotes"><h3>보기별 해설</h3>${order.map((orig, k) => {
   const n = q.choiceNotes[orig] || {}, isAns = orig === q.answer;
   const tag = isAns ? `<span class="ctag good">정답</span>` : (orig === picked ? `<span class="ctag bad">내 선택</span>` : "");

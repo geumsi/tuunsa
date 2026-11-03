@@ -289,3 +289,11 @@ body.covered{overflow:hidden}
 .explain .memo{margin-top:12px;padding:10px 12px;border-radius:8px;background:var(--accent-soft)}
 .explain .memo h3{margin:0 0 2px;color:var(--accent)}
 .explain .memo ul{margin:0}
+
+/* 실무 사례 */
+.explain .case{margin-top:10px;padding:10px 12px;border-radius:8px;background:var(--surface2);font-size:.92rem}
+.explain .case .case-h{margin:0 0 4px;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.explain .case .case-h b{font-weight:700}
+.explain .case-tag{font-size:.72rem;font-weight:700;padding:1px 7px;border-radius:99px;background:var(--accent-soft);color:var(--accent)}
+.explain .case.ex .case-tag{background:var(--line);color:var(--muted)}
+.explain .case-src{display:inline-block;margin-top:6px;font-size:.78rem;color:var(--muted)}
