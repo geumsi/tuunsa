@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <!-- og 이미지 1200x630. 디자인팀 시안 docs/teams/og-image.svg에서 이름과 숫자 칩만 자리표시자로 바꿨다.
+       tools/sync-site.js가 config.js 이름과 data 숫자로 img/og.svg를 만들고, 가능하면 img/og.png로 뽑는다 -->
+  <defs>
+    <style>
+      .t{font-family:"Noto Sans KR","Apple SD Gothic Neo",sans-serif}
+    </style>
+  </defs>
+  <rect width="1200" height="630" fill="#f6f7f9"/>
+  <rect x="0" y="0" width="1200" height="10" fill="#2557d6"/>
+
+  <!-- 왼쪽: 이름과 약속 -->
+  <g transform="translate(90 120)">
+    <rect width="76" height="76" rx="17" fill="#2557d6"/>
+    <path d="M19 48l12-15 10 9 17-21" transform="translate(0 2)" stroke="#fff" stroke-width="7.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="96" y="54" class="t" font-size="44" font-weight="800" fill="#191c21" letter-spacing="-1">투운사 모의고사</text>
+  </g>
+  <text x="90" y="290" class="t" font-size="54" font-weight="800" fill="#191c21" letter-spacing="-1.5">투자자산운용사 문제,</text>
+  <text x="90" y="360" class="t" font-size="54" font-weight="800" fill="#2557d6" letter-spacing="-1.5">보기마다 해설</text>
+  <text x="90" y="420" class="t" font-size="26" font-weight="500" fill="#5d6572">실전 100문항 모의고사 · 과목별 과락 채점 · 가입 없이 무료</text>
+
+  <g class="t" font-size="22" font-weight="700">
+    <rect x="90" y="462" width="150" height="46" rx="23" fill="#e7eefc"/>
+    <text x="165" y="493" text-anchor="middle" fill="#2557d6">문제 458개</text>
+    <rect x="254" y="462" width="188" height="46" rx="23" fill="#e7eefc"/>
+    <text x="348" y="493" text-anchor="middle" fill="#2557d6">계산 문제 33개</text>
+    <rect x="456" y="462" width="201" height="46" rx="23" fill="#e7eefc"/>
+    <text x="556.5" y="493" text-anchor="middle" fill="#2557d6">실제 사례 123건</text>
+  </g>
+
+  <!-- 오른쪽: 문제 카드 미리보기 -->
+  <g transform="translate(730 110)">
+    <rect x="0" y="0" width="380" height="410" rx="22" fill="#ffffff" stroke="#dde1e7" stroke-width="2"/>
+    <rect x="26" y="26" width="132" height="30" rx="15" fill="#e2f1ef"/>
+    <text x="92" y="47" text-anchor="middle" class="t" font-size="15" font-weight="700" fill="#0b6b62">대안투자운용</text>
+    <text x="26" y="96" class="t" font-size="21" font-weight="700" fill="#191c21">CDS를 결합한 채권으로</text>
+    <text x="26" y="126" class="t" font-size="21" font-weight="700" fill="#191c21">신용위험을 넘기는 상품은?</text>
+    <g class="t" font-size="19">
+      <rect x="26" y="152" width="328" height="48" rx="12" fill="#fff" stroke="#dde1e7" stroke-width="2"/>
+      <text x="48" y="183" fill="#5d6572">1  TRS</text>
+      <rect x="26" y="210" width="328" height="48" rx="12" fill="#e3f4ea" stroke="#18794e" stroke-width="2"/>
+      <text x="48" y="241" fill="#191c21" font-weight="700">2  CLN</text>
+    </g>
+    <rect x="26" y="276" width="328" height="108" rx="12" fill="#f0f2f5"/>
+    <circle cx="62" cy="312" r="20" fill="none" stroke="#18794e" stroke-width="4"/>
+    <text x="62" y="320" text-anchor="middle" class="t" font-size="22" font-weight="800" fill="#18794e">O</text>
+    <text x="96" y="320" class="t" font-size="21" font-weight="800" fill="#18794e">정답</text>
+    <text x="44" y="362" class="t" font-size="16" fill="#5d6572">해설 · 보기별 이유 · 실무 사례</text>
+  </g>
+</svg>

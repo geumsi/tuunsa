@@ -6,10 +6,10 @@
 <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#14161a" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="투운사">
+<!-- site:head 이 사이는 tools/sync-site.js가 config.js로 다시 쓴다. 직접 고치지 말 것 -->
+<meta name="apple-mobile-web-app-title" content="투운사 모의고사">
 <title>투운사 모의고사</title>
 <meta name="description" content="투자자산운용사 과목별 4지선다 문제, 정답 O·X 표시와 상세 해설, 실전 100문항 모의고사">
-<!-- 아래 주소는 config.js SITE_URL과 같아야 한다. 바꿀 때는 node tools/sync-site-url.js -->
 <link rel="canonical" href="https://jeongtai.github.io/tuunsa-quiz/">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ko_KR">
@@ -29,6 +29,7 @@
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"WebSite","name":"투운사 모의고사","alternateName":"투자자산운용사 모의고사","url":"https://jeongtai.github.io/tuunsa-quiz/","inLanguage":"ko","description":"투자자산운용사 과목별 문제와 보기별 해설, 실전 100문항 모의고사","about":{"@type":"EducationalOccupationalCredential","name":"투자자산운용사"}}
 </script>
+<!-- /site:head -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232557d6'/%3E%3Cpath d='M16 40l10-12 8 7 14-17' stroke='white' stroke-width='6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -40,7 +41,7 @@
   <header class="top">
     <button class="brand" id="homeBtn" aria-label="처음 화면으로">
       <span class="logo" aria-hidden="true"><svg viewBox="0 0 64 64" width="26" height="26"><rect width="64" height="64" rx="14" fill="currentColor"/><path d="M16 40l10-12 8 7 14-17" stroke="var(--surface)" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-      <span class="brand-text"><b>투운사 모의고사</b><small>투자자산운용사 2026</small></span>
+      <span class="brand-text"><!-- site:brand --><b>투운사 모의고사</b><small>투자자산운용사 2026</small><!-- /site:brand --></span>
     </button>
     <div class="topbtns">
       <button class="iconbtn" id="coverBtn" aria-label="화면 가리기" title="화면 가리기 (Esc 두 번)" hidden><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c5 0 9 4.5 10 7a12 12 0 0 1-3 4M6.5 6.6C4.2 8 2.6 10.2 2 12c1 2.5 5 7 10 7a10 10 0 0 0 4.4-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
@@ -54,10 +55,13 @@
     <a href="#calculator" data-tab="calculator">계산기 사용법</a>
   </nav>
   <main id="view" tabindex="-1"></main>
+  <footer class="sitefoot"><!-- site:foot --><p>투운사 모의고사는 개인이 운영하는 비공식 학습 사이트이며 각 자격시험 시행기관과 관련이 없습니다. 시험 공부용 자료이며 투자 권유가 아닙니다.</p>
+    <p class="footlinks"><a href="terms.html">이용약관</a> · <a href="privacy.html">개인정보처리방침</a> · <span>문의(준비 중)</span></p><!-- /site:foot --></footer>
 </div>
 <noscript>이 사이트는 자바스크립트가 필요합니다.</noscript>
 
 <script src="config.js"></script>
+<script src="site.js"></script>
 <script src="ads.js"></script>
 <script src="data/s0_2026.js"></script>
 <script src="data/s1_tax.js"></script>

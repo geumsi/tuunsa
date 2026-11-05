@@ -51,14 +51,16 @@ data/calcguide.js 계산기 사용법 탭 내용 (계산기 그림 키 배치는
 문제를 추가하려면 해당 영역의 `data/*.js`에 항목을 넣으면 됩니다. 로컬에서 볼 때는 `index.html`을 브라우저로 열면 됩니다.
 
 ```
-config.js    사이트 주소(SITE_URL), 광고(ADS), 분석(ANALYTICS), 문의(CONTACT) 설정
+config.js    사이트 이름(SITE_NAME·BRAND), 주소(SITE_URL), 광고(ADS), 문의(CONTACT) 등 설정
+site.js      하단 고지·사례 기준일·정정 요청 문구 (앱과 tools 공용)
 ads.js       광고 슬롯. ADS.provider가 null이면 광고 코드를 그리지도 불러오지도 않음
 tools/build-pages.js    문제별 정적 HTML과 sitemap 생성 (node tools/build-pages.js --out 폴더)
-tools/sync-site-url.js  SITE_URL을 바꾼 뒤 index.html·robots.txt·sitemap.xml 등에 반영
+tools/sync-site.js      config.js를 고친 뒤 실행. index.html head, privacy·terms·404, manifest, robots, sitemap, ads.txt, og 이미지를 다시 만듦
+                        (--check 검사만, --png og.png 다시 뽑기, --cname 자체 도메인용 CNAME 생성)
 tests/       node --test tests/*.test.js
 ```
 
-광고는 문제 화면(해설과 '다음 문제' 버튼 아래)과 결과 화면 맨 아래 두 곳에만 나오고, 업무모드와 화면 가리기 상태에서는 나오지 않습니다. `index.html#q=문제id`로 열면 그 문제부터 같은 영역을 이어서 풉니다.
+광고 자리는 문제 화면(답한 뒤 '다음 문제' 버튼 아래), 결과 화면 맨 아래, 공식 암기·계산기 사용법 탭 맨 아래, 정적 문제 페이지 하단이며 config.js 슬롯으로 하나씩 켜고 끕니다. 업무모드와 화면 가리기 중에는 광고를 DOM에서 지우고(CSS로 숨기지 않음), 가리기를 풀어도 다시 넣지 않고 다음 화면 전환 때만 그립니다. `index.html#q=문제id`로 열면 그 문제부터 같은 영역을 이어서 풉니다.
 
 ## 주의
 

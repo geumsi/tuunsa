@@ -1,0 +1,2 @@
+# ads.txt 자리. 광고 네트워크 승인 뒤 그 네트워크가 안내하는 줄을 이 아래에 그대로 붙인다.
+# 도메인 루트(https://도메인/ads.txt)에 있어야 읽힌다. 지금 주소 https://jeongtai.github.io/tuunsa-quiz/은 루트가 아니라서 효력이 없다.
