@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 // config.js(SITE_NAME·BRAND·SITE_URL·CONTACT·ADS)를 정적 파일에 반영한다. 이름이나 도메인이 바뀌면 이것 한 번만 돌린다.
 // 만드는 것: index.html의 site:head·site:brand·site:foot 구역, privacy.html, terms.html, 404.html,
-//            manifest.webmanifest, robots.txt, sitemap.xml, ads.txt, img/og.svg(+ img/og.png)
-// 사용: node tools/sync-site.js [--check] [--png] [--cname]
+//            manifest.webmanifest, robots.txt, sitemap.xml, ads.txt, img/og.svg(+ img/og.png),
+//            tools/hub/(허브 저장소 jeongtai.github.io에 복사할 index.html·robots.txt·ads.txt 초안)
+// 사용: node tools/sync-site.js [--check] [--png] [--url https://도메인/경로/] [--cname]
 //   --check  파일을 쓰지 않고, config와 어긋난 파일이 있으면 목록을 찍고 종료 코드 1
 //   --png    img/og.svg가 그대로여도 img/og.png를 다시 뽑는다 (gstack browse 필요, 없으면 건너뜀)
-//   --cname  자체 도메인일 때 GitHub Pages용 CNAME 파일을 만든다. github.io 주소나 하위 경로면 거절
+//   --url    config.js의 SITE_URL을 이 값으로 바꾼 뒤 반영한다
+//   --cname  tools/hub/CNAME을 만든다. 이 저장소 루트에는 CNAME을 만들지 않는다.
+//            도메인은 허브 저장소(jeongtai.github.io)에 걸어야 프로젝트 사이트가 도메인/저장소이름/으로 열린다(docs/HUB-SETUP.md)
 "use strict";
 const fs = require("fs");
 const path = require("path");
@@ -36,17 +39,27 @@ function replaceBlock(s, tag, body){
 }
 const adsOn = cfg => !!(cfg.ADS && AD_NAMES[cfg.ADS.provider]);
 const isRoot = url => new URL(url).pathname === "/";
+const hubUrl = url => new URL(url).origin + "/";
+const URL_RE = /^https:\/\/[^\s"'<>\\]+\/$/;
+// config.js 원문에서 SITE_URL 값만 바꾼다.
+function setUrl(src, url){
+  if(!URL_RE.test(url)) throw new Error("--url은 https://로 시작하고 /로 끝나야 합니다: " + url);
+  const re = /(SITE_URL:\s*")[^"]*(")/;
+  if(!re.test(src)) throw new Error("config.js에서 SITE_URL을 찾지 못했습니다");
+  return src.replace(re, (_, a, b) => a + url + b);
+}
 
 function headHtml(cfg){
-  const name = SITE.name(cfg), owner = SITE.owner(cfg), url = cfg.SITE_URL, title = `${name} · 투자자산운용사 문제와 해설`;
+  const name = SITE.name(cfg), owner = SITE.owner(cfg), url = cfg.SITE_URL, full = SITE.fullName(cfg);
+  const title = `${name} · 투자자산운용사 문제와 해설${SITE.brand(cfg) ? ` | ${SITE.brand(cfg)}` : ""}`;
   const og = url + "img/og.png";
   const ld = {"@context":"https://schema.org", "@type":"WebSite", "name":name, "alternateName":"투자자산운용사 모의고사",
     "url":url, "inLanguage":"ko", "description":"투자자산운용사 과목별 문제와 보기별 해설, 실전 100문항 모의고사",
     "about":{"@type":"EducationalOccupationalCredential", "name":"투자자산운용사"}};
-  if(SITE.brand(cfg)) ld.publisher = {"@type":"Organization", "name":SITE.brand(cfg)};
+  if(SITE.brand(cfg)) ld.publisher = Object.assign({"@type":"Organization", "name":SITE.brand(cfg), "url":hubUrl(url)}, SITE.brandSub(cfg) ? {"description":SITE.brandSub(cfg)} : {});
   return `
 <meta name="apple-mobile-web-app-title" content="${esc(name)}">
-<title>${esc(name)}</title>
+<title>${esc(full)}</title>
 <meta name="description" content="${esc(DESC)}">
 <link rel="canonical" href="${esc(url)}">
 <meta property="og:type" content="website">
@@ -79,7 +92,7 @@ function page(cfg, {file, title, body, up, noindex}){
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- tools/sync-site.js가 만든 파일. 직접 고치지 말고 템플릿이나 config.js를 고친다 -->
-<title>${esc(title)} · ${esc(name)}</title>
+<title>${esc(title)} · ${esc(SITE.fullName(cfg))}</title>
 ${noindex ? `<meta name="robots" content="noindex">\n` : `<link rel="canonical" href="${esc(cfg.SITE_URL + file)}">\n`}<link rel="icon" href="${up}img/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="${up}style.css">
 </head>
@@ -121,7 +134,7 @@ function ogSvg(cfg, n){
 function outputs(cfg){
   const url = cfg.SITE_URL, name = SITE.name(cfg);
   const flags = {contact: !!SITE.contact(cfg), ads: adsOn(cfg), adsense: adsOn(cfg) && cfg.ADS.provider === "adsense", adfit: adsOn(cfg) && cfg.ADS.provider === "adfit"};
-  const vars = {NAME: esc(name), NAME_EUL: SITE.josa(name, "을", "를"), OWNER: esc(SITE.owner(cfg)), URL: esc(url), CONTACT: SITE.contactHtml(cfg),
+  const vars = {NAME: esc(name), OWNER: esc(SITE.owner(cfg)), OWNER_EUL: SITE.josa(SITE.owner(cfg), "을", "를"), URL: esc(url), CONTACT: SITE.contactHtml(cfg),
     DATE: /^\d{4}-\d{2}-\d{2}$/.test(cfg.POLICY_DATE || "") ? esc(cfg.POLICY_DATE) : "게시일(확정 전)",
     ADNAME: flags.ads ? esc(AD_NAMES[cfg.ADS.provider]) : ""};
   const tpl = f => render(fs.readFileSync(path.join(__dirname, "templates", f), "utf8"), vars, flags);
@@ -141,11 +154,57 @@ function outputs(cfg){
     icons: [{src:"img/icon-192.png", sizes:"192x192", type:"image/png"}, {src:"img/icon-512.png", sizes:"512x512", type:"image/png"}, {src:"img/icon.svg", sizes:"any", type:"image/svg+xml"}]
   }, null, 2) + "\n";
   const qSitemap = fs.existsSync(path.join(ROOT, "q", "sitemap.xml"));
-  out["robots.txt"] = `${isRoot(url) ? "" : `# 주의: ${url}은 도메인 루트가 아니라서 크롤러가 이 파일을 읽지 않는다. 자체 도메인 연결 후부터 효력이 있다.\n`}User-agent: *\nAllow: /\n\nSitemap: ${url}sitemap.xml\n${qSitemap ? `Sitemap: ${url}q/sitemap.xml\n` : ""}`;
+  out["robots.txt"] = `${isRoot(url) ? "" : `# 주의: ${url}은 도메인 루트가 아니라서 크롤러가 이 파일을 읽지 않는다. 효력이 있는 것은 허브 루트의 robots.txt(tools/hub/robots.txt 복사본)다.\n`}User-agent: *\nAllow: /\n\nSitemap: ${url}sitemap.xml\n${qSitemap ? `Sitemap: ${url}q/sitemap.xml\n` : ""}`;
   out["sitemap.xml"] = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${["", "privacy.html", "terms.html"].map(p => `  <url><loc>${esc(url + p)}</loc></url>`).join("\n")}\n</urlset>\n`;
   out["ads.txt"] = `# ads.txt 자리. 광고 네트워크 승인 뒤 그 네트워크가 안내하는 줄을 이 아래에 그대로 붙인다.\n# 도메인 루트(https://도메인/ads.txt)에 있어야 읽힌다.${isRoot(url) ? "" : ` 지금 주소 ${url}은 루트가 아니라서 효력이 없다.`}\n`;
   out["img/og.svg"] = ogSvg(cfg, counts());
+  Object.assign(out, hubOutputs(cfg));
   return out;
+}
+
+// 허브(도메인 루트) 초안. 허브 저장소 jeongtai.github.io에 그대로 복사한다. 자격증이 늘면 EXAMS에 더한다.
+function hubOutputs(cfg){
+  const url = cfg.SITE_URL, hub = hubUrl(url), brand = SITE.brand(cfg) || SITE.name(cfg), sub = SITE.brandSub(cfg);
+  const EXAMS = [{name: SITE.name(cfg), exam: "투자자산운용사", desc: "과목별 문제와 보기별 해설, 실전 100문항 모의고사", href: new URL(url).pathname}];
+  const ld = {"@context":"https://schema.org", "@type":"WebSite", "name":brand, "url":hub, "inLanguage":"ko",
+    "publisher":Object.assign({"@type":"Organization", "name":brand}, sub ? {"description":sub} : {})};
+  const html = `<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- tools/sync-site.js가 만든 허브 초안. 허브 저장소(jeongtai.github.io) 루트에 index.html로 복사한다. docs/HUB-SETUP.md -->
+<title>${esc(brand)}${sub ? ` | ${esc(sub)}` : ""}</title>
+<meta name="description" content="${esc(`${brand}${sub ? ` ${sub}` : ""}. 금융자격증 시험 대비 연습문제와 해설.`)}">
+<link rel="canonical" href="${esc(hub)}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="${esc(brand)}">
+<meta property="og:title" content="${esc(brand)}${sub ? ` | ${esc(sub)}` : ""}">
+<meta property="og:url" content="${esc(hub)}">
+<link rel="stylesheet" href="${esc(url)}style.css">
+<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>
+<style>.hub{padding:18px;margin-top:16px}.hub h1{font-size:1.5rem;margin:0}.hub ul{list-style:none;padding:0;display:grid;gap:10px}.hub li a{display:block;padding:14px;border-radius:12px;background:var(--surface2);color:inherit;text-decoration:none;min-height:44px}.hub li b{display:block}</style>
+</head>
+<body>
+<div class="app">
+  <main class="card hub">
+    <h1>${esc(brand)}</h1>
+    ${sub ? `<p class="muted">${esc(sub)}</p>` : ""}
+    <ul>
+${EXAMS.map(e => `      <li><a href="${esc(e.href)}"><b>${esc(e.name)}</b><span class="muted small">${esc(e.exam)} · ${esc(e.desc)}</span></a></li>`).join("\n")}
+    </ul>
+    <p class="muted small">다른 금융자격증은 준비 중입니다.</p>
+  </main>
+  <footer class="sitefoot">${SITE.footerHtml(cfg, url)}</footer>
+</div>
+</body>
+</html>
+`;
+  return {
+    "tools/hub/index.html": html,
+    "tools/hub/robots.txt": `User-agent: *\nAllow: /\n\n${EXAMS.map(e => `Sitemap: ${hub.replace(/\/$/, "")}${e.href}sitemap.xml\nSitemap: ${hub.replace(/\/$/, "")}${e.href}q/sitemap.xml`).join("\n")}\n`,
+    "tools/hub/ads.txt": `# 허브 저장소 루트(https://도메인/ads.txt)에 두는 ads.txt. 광고 네트워크 승인 뒤 안내받은 줄을 이 아래에 붙인다.\n`
+  };
 }
 
 function browseBin(){
@@ -163,6 +222,13 @@ function renderPng(){
 
 function main(){
   const args = process.argv.slice(2), check = args.includes("--check");
+  const ui = args.indexOf("--url");
+  if(ui >= 0){
+    const cp = path.join(ROOT, "config.js"), next = setUrl(fs.readFileSync(cp, "utf8"), args[ui + 1] || "");
+    if(check) { console.error("--url과 --check는 같이 쓸 수 없습니다."); process.exit(1); }
+    fs.writeFileSync(cp, next);
+    console.log("config.js SITE_URL → " + args[ui + 1]);
+  }
   const cfg = loadConfig(), out = outputs(cfg), changed = [];
   Object.keys(out).forEach(f => {
     const p = path.join(ROOT, f), cur = fs.existsSync(p) ? fs.readFileSync(p, "utf8") : null;
@@ -170,11 +236,13 @@ function main(){
     changed.push(f);
     if(!check) fs.writeFileSync(p, out[f]);
   });
+  // 이 저장소 루트의 CNAME은 프로젝트 사이트를 도메인에 따로 묶어 허브 구조(도메인/tuunsa/)를 깨므로 두지 않는다.
+  if(fs.existsSync(path.join(ROOT, "CNAME"))){ console.error("이 저장소 루트에 CNAME이 있습니다. 지우고 허브 저장소에 두세요(docs/HUB-SETUP.md)."); process.exit(1); }
   if(args.includes("--cname")){
-    const u = new URL(cfg.SITE_URL);
-    if(/\.github\.io$/.test(u.hostname) || u.pathname !== "/") { console.error(`CNAME 거절: ${cfg.SITE_URL}은 자체 도메인 루트가 아닙니다.`); process.exit(1); }
-    if(!check) fs.writeFileSync(path.join(ROOT, "CNAME"), u.hostname + "\n");
-    console.log(`CNAME: ${u.hostname}`);
+    const host = new URL(cfg.SITE_URL).hostname;
+    if(/\.github\.io$/.test(host)) { console.error(`CNAME 거절: ${cfg.SITE_URL}은 자체 도메인이 아닙니다. --url로 도메인 주소를 먼저 넣으세요.`); process.exit(1); }
+    if(!check) fs.writeFileSync(path.join(ROOT, "tools", "hub", "CNAME"), host + "\n");
+    console.log(`tools/hub/CNAME: ${host} (허브 저장소 jeongtai.github.io 루트로 복사)`);
   }
   if(check){
     if(changed.length){ console.log("config.js와 어긋난 파일: " + changed.join(", ") + "\nnode tools/sync-site.js를 돌리세요."); process.exit(1); }
@@ -184,5 +252,5 @@ function main(){
   if(changed.includes("img/og.svg") || args.includes("--png")) renderPng();
 }
 
-module.exports = {outputs, render, replaceBlock, ogSvg};
+module.exports = {outputs, hubOutputs, setUrl, render, replaceBlock, ogSvg};
 if(require.main === module) main();

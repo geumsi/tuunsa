@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://jeongtai.github.io/tuunsa-quiz/sitemap.xml
+Sitemap: https://jeongtai.github.io/tuunsa-quiz/q/sitemap.xml

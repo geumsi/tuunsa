@@ -117,7 +117,7 @@ function questionPage(ctx, area, q, i){
   const url = `${site}${opt.base}${area.id}/${slug(area, q)}.html`;
   const prev = qs[i - 1], next = qs[i + 1];
   const real = q.case && q.case.type === "real", safe = metaSafeQ(q);
-  const title = safe ? `${cut(q.q, 40)} · ${area.title} | ${SITE.name(cfg)}` : `${area.title} 연습문제 ${i + 1}번 | ${SITE.name(cfg)}`;
+  const title = safe ? `${cut(q.q, 40)} · ${area.title} | ${SITE.fullName(cfg)}` : `${area.title} 연습문제 ${i + 1}번 | ${SITE.fullName(cfg)}`;
   const desc = !safe ? `투자자산운용사 ${area.title} 연습문제 ${i + 1}번. 보기와 정답·해설.`
     : cut(opt.hideAnswer || real ? `투자자산운용사 ${area.title} 연습문제. ${q.q}` : firstSentence(q.explain) || q.q, 120);
   const choices = q.type === "mc" ? `<ol class="ch">${q.choices.map(c => `<li><span>${esc(c)}</span></li>`).join("")}</ol>` : `<p class="muted small">O·X 문제: 맞으면 O, 틀리면 X</p>`;
@@ -158,7 +158,7 @@ function areaPage(ctx, area){
     <p class="muted small">${subj ? esc(`${subj.name} ${subj.full}`) : ""}${area.examCount ? ` · 실제 시험 ${area.examCount}문항` : ""}</p>
     <ol class="qlist">${area.questions.map(q => `<li><a href="${slug(area, q)}.html">${esc(cut(q.q, 80))}</a></li>`).join("")}</ol>
   </main>`;
-  return {url, html: layout(cfg, {title:`${area.title} 문제 모음 | ${SITE.name(cfg)}`, desc:cut(`투자자산운용사 ${area.title} 연습문제 ${area.questions.length}개와 정답·해설.`, 120), canonical:url, up, body})};
+  return {url, html: layout(cfg, {title:`${area.title} 문제 모음 | ${SITE.fullName(cfg)}`, desc:cut(`투자자산운용사 ${area.title} 연습문제 ${area.questions.length}개와 정답·해설.`, 120), canonical:url, up, body})};
 }
 
 function indexPage(ctx, areas){
@@ -173,7 +173,7 @@ function indexPage(ctx, areas){
     }).join("")}
     <p><a class="btn primary block" href="${up}">사이트에서 풀어보기</a></p>
   </main>`;
-  return {url, html: layout(cfg, {title:`투자자산운용사 문제 모음 | ${SITE.name(cfg)}`, desc:`투자자산운용사 과목·영역별 연습문제 ${total}개와 정답·보기별 해설.`, canonical:url, up, body})};
+  return {url, html: layout(cfg, {title:`투자자산운용사 문제 모음 | ${SITE.fullName(cfg)}`, desc:`투자자산운용사 과목·영역별 연습문제 ${total}개와 정답·보기별 해설.`, canonical:url, up, body})};
 }
 
 function sitemap(urls){

@@ -5,7 +5,7 @@ const assert = require("node:assert");
 const fs = require("fs");
 const path = require("path");
 const SITE = require("../site.js");
-const {outputs} = require("../tools/sync-site.js");
+const {outputs, setUrl} = require("../tools/sync-site.js");
 const {loadConfig, ROOT} = require("../tools/lib.js");
 
 test("조사: 받침 유무", () => {
@@ -39,7 +39,7 @@ test("이름·브랜드·주소를 바꾸면 모든 산출물에 반영되고 �
     assert.ok(out[f].includes("금융책방"), f + "에 새 이름이 없음");
   });
   ["index.html", "privacy.html", "terms.html", "404.html", "robots.txt", "sitemap.xml"].forEach(f => assert.ok(!out[f].includes("jeongtai.github.io"), f + "에 옛 주소가 남음"));
-  assert.ok(out["index.html"].includes('"publisher":{"@type":"Organization","name":"금융책방"}'));
+  assert.ok(out["index.html"].includes('"publisher":{"@type":"Organization","name":"금융책방","url":"https://example.com/"'));
   assert.ok(out["robots.txt"].indexOf("주의") < 0, "루트 도메인이면 경고 없음");
   assert.ok(out["terms.html"].includes("help@example.com"));
   assert.ok(!("CNAME" in out), "CNAME은 --cname일 때만");
@@ -51,4 +51,35 @@ test("광고를 켜야 개인정보처리방침에 광고 쿠키 조항이 들�
   const p = outputs(on)["privacy.html"];
   assert.ok(p.includes("광고 쿠키") && p.includes("Google AdSense") && p.includes("google.com/settings/ads"));
   assert.ok(!p.includes("{{"));
+});
+
+test("브랜드: 제목은 \"사이트 | 브랜드\", 하단 고지와 약관·처리방침의 운영 주체는 브랜드", () => {
+  const cfg = Object.assign({}, loadConfig(), {SITE_NAME:"투운사 모의고사", BRAND:"금시초문", BRAND_SUB:"금융자격증 문제풀이"});
+  const out = outputs(cfg);
+  assert.ok(out["index.html"].includes("<title>투운사 모의고사 | 금시초문</title>"));
+  assert.ok(out["index.html"].includes("금시초문은 개인이 운영하는 비공식 학습 사이트"));
+  assert.ok(out["privacy.html"].includes("<h1>금시초문 개인정보처리방침</h1>"));
+  assert.ok(out["privacy.html"].includes("<title>개인정보처리방침 · 투운사 모의고사 | 금시초문</title>"));
+  assert.ok(out["terms.html"].includes("이 약관은 금시초문(이하"));
+  assert.ok(out["terms.html"].includes(")을 이용하는"));
+  assert.ok(out["tools/hub/index.html"].includes("<title>금시초문 | 금융자격증 문제풀이</title>"));
+  assert.strictEqual(SITE.fullName({SITE_NAME:"A"}), "A");
+});
+test("허브 초안: 도메인 루트 기준 링크·robots, CNAME은 만들지 않는다", () => {
+  const cfg = Object.assign({}, loadConfig(), {SITE_URL:"https://geumsi.com/tuunsa/"});
+  const out = outputs(cfg);
+  assert.ok(out["tools/hub/index.html"].includes('href="/tuunsa/"'));
+  assert.ok(out["tools/hub/index.html"].includes('<link rel="canonical" href="https://geumsi.com/">'));
+  assert.ok(out["tools/hub/robots.txt"].includes("Sitemap: https://geumsi.com/tuunsa/sitemap.xml"));
+  assert.ok(!Object.keys(out).some(f => /(^|\/)CNAME$/.test(f)), "CNAME은 --cname일 때 tools/hub에만");
+  assert.ok(!fs.existsSync(path.join(ROOT, "CNAME")), "저장소 루트에 CNAME이 없어야 한다");
+});
+test("--url: config.js의 SITE_URL만 바꾸고, 잘못된 주소는 거절", () => {
+  const src = fs.readFileSync(path.join(ROOT, "config.js"), "utf8");
+  const next = setUrl(src, "https://geumsi.com/tuunsa/");
+  assert.ok(next.includes('SITE_URL: "https://geumsi.com/tuunsa/"'));
+  assert.strictEqual(next.replace('"https://geumsi.com/tuunsa/"', '"' + loadConfig().SITE_URL + '"'), src);
+  assert.throws(() => setUrl(src, "http://geumsi.com/tuunsa/"));
+  assert.throws(() => setUrl(src, "https://geumsi.com/tuunsa"));
+  assert.throws(() => setUrl(src, 'https://x.com/"/'));
 });

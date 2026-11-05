@@ -2,8 +2,10 @@
 // 고친 뒤에는 `node tools/sync-site.js`로 index.html head, privacy·terms·404, manifest, robots, sitemap, ads.txt를 다시 만든다.
 window.SITE_CONFIG = {
   SITE_NAME: "투운사 모의고사",   // 이 시험 사이트 이름
-  BRAND: null,                     // 여러 자격증을 묶는 통합 브랜드 이름. 정해지면 문자열
-  SITE_URL: "https://jeongtai.github.io/tuunsa-quiz/",   // 끝의 / 포함. 자체 도메인이면 https://도메인/
+  BRAND: "금시초문",               // 여러 자격증을 묶는 통합 브랜드(운영 주체 이름). 제목 끝·하단 고지·약관에 쓴다
+  BRAND_SUB: "금융자격증 문제풀이", // 브랜드 부제. 브랜드만으로는 검색에서 묻혀서 함께 쓴다
+  SITE_URL: "https://jeongtai.github.io/tuunsa-quiz/",   // 끝의 / 포함. 도메인을 연결하기 전까지 github.io
+  // FUTURE_URL: "https://geumsi.com/tuunsa/"   도메인 연결 뒤 README의 명령 한 줄로 바꾼다
   // provider: null이면 광고 코드를 일절 그리거나 불러오지 않는다.
   //   "adsense": client "ca-pub-숫자", slots 값은 광고 단위 번호(숫자)
   //   "adfit":   client 불필요, slots 값은 광고 단위 ID("DAN-...")

@@ -10,6 +10,7 @@ const CFG = window.SITE_CONFIG || {};
 const ADS = window.TuunsaAds || null;
 const SITE = window.TuunsaSite || null;
 const SITE_NAME = SITE ? SITE.name(CFG) : "투운사 모의고사";
+const FULL_NAME = SITE ? SITE.fullName(CFG) : SITE_NAME;   // 탭 제목용 "투운사 모의고사 | 금시초문"
 // 계산 문제는 data/calc.js 한 곳에 모아 두고, 각 문항의 area 영역에 합친다.
 CALC.questions.forEach(q => { if(D[q.area] && !D[q.area].questions.some(x => x.id === q.id)) D[q.area].questions.push(q); });
 const SUBJECTS = [
@@ -519,7 +520,7 @@ applyTheme();
 /* ---------- work mode & cover ---------- */
 // 업무모드: 이름·탭 제목·아이콘·색을 문서처럼 바꾼다. 커버: Esc 두 번(모바일은 상단 버튼)으로 화면 전체를 메모로 가린다.
 let WORK = !!load(K.work, false), COVER = false, titleP = "", realTitle = document.title;
-const appName = () => WORK ? "Weekly Brief" : SITE_NAME;
+const appName = () => WORK ? "Weekly Brief" : FULL_NAME;
 function setTitle(p){   // p: 문자열 또는 [평소, 업무모드]
   titleP = p; const t = Array.isArray(p) ? p[WORK ? 1 : 0] : p;
   realTitle = t ? `${t} · ${appName()}` : appName(); if(!COVER) document.title = realTitle;

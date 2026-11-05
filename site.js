@@ -7,6 +7,9 @@ const name = c => (c && typeof c.SITE_NAME === "string" && c.SITE_NAME.trim()) |
 // 통합 브랜드가 정해지면 운영 주체·og:site_name으로 쓴다.
 const brand = c => (c && typeof c.BRAND === "string" && c.BRAND.trim()) || "";
 const owner = c => brand(c) || name(c);
+const brandSub = c => brand(c) && c && typeof c.BRAND_SUB === "string" ? c.BRAND_SUB.trim() : "";
+// 제목 끝에 붙이는 이름: "투운사 모의고사 | 금시초문". 브랜드가 없으면 사이트 이름만
+const fullName = c => brand(c) ? `${name(c)} | ${brand(c)}` : name(c);
 const contact = c => c && typeof c.CONTACT === "string" && /^[^\s@<>"'&]+@[^\s@<>"'&]+\.[A-Za-z]{2,}$/.test(c.CONTACT) ? c.CONTACT : "";
 const contactHtml = c => contact(c) ? `<a href="mailto:${esc(contact(c))}">${esc(contact(c))}</a>` : "문의 메일(준비 중)";
 const validDate = d => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : "";
@@ -19,7 +22,7 @@ function fixHtml(c, about, label){
   return `<a href="mailto:${esc(contact(c))}?subject=${encodeURIComponent("[정정 요청] " + name(c))}&amp;body=${encodeURIComponent(body)}">${esc(label || "정정 요청 메일 보내기")}</a>`;
 }
 // 모든 화면 하단 고지(법률팀 2라운드 문구). up: 사이트 루트까지의 상대 경로("" 또는 "../../")
-const footerHtml = (c, up) => `<p>${esc(name(c))}${josa(name(c), "은", "는")} 개인이 운영하는 비공식 학습 사이트이며 각 자격시험 시행기관과 관련이 없습니다. 시험 공부용 자료이며 투자 권유가 아닙니다.</p>
+const footerHtml = (c, up) => `<p>${esc(owner(c))}${josa(owner(c), "은", "는")} 개인이 운영하는 비공식 학습 사이트이며 각 자격시험 시행기관과 관련이 없습니다. 시험 공부용 자료이며 투자 권유가 아닙니다.</p>
     <p class="footlinks"><a href="${up}terms.html">이용약관</a> · <a href="${up}privacy.html">개인정보처리방침</a> · ${contact(c) ? `<a href="mailto:${esc(contact(c))}">문의</a>` : `<span>문의(준비 중)</span>`}</p>`;
 // 실제 사례 박스 하단 문구. 사례에 checked(YYYY-MM-DD)가 있으면 그 날짜, 없으면 config CASES_CHECKED
 // about: 정정 요청 메일 본문에 미리 채울 대상(페이지 주소·문제 id·사례 제목)
@@ -27,7 +30,7 @@ const caseNote = (c, cs, about) => {
   const d = validDate(cs && cs.checked) || validDate(c && c.CASES_CHECKED);
   return `공개 보도와 감독기관 발표를 요약한 내용입니다${d ? `(기준일 ${d})` : ""}. 이후 바뀐 내용이 있을 수 있습니다. 정정 요청: ${fixHtml(c, about || (cs && cs.title) || "", "메일 보내기")}`;
 };
-const api = {esc, name, brand, owner, contact, contactHtml, footerHtml, caseNote, fixHtml, josa};
+const api = {esc, name, brand, brandSub, fullName, owner, contact, contactHtml, footerHtml, caseNote, fixHtml, josa};
 root.TuunsaSite = api;
 if(typeof module === "object" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);
