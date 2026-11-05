@@ -38,8 +38,10 @@ function slotOf(cfg, name){
   const n = v => Number.isInteger(v) && v > 0 && v <= 1000 ? v : 0;
   return {id:s.id, w:n(s.w), h:n(s.h)};
 }
+// 다른 사이트의 iframe 안이면 광고를 그리지 않는다(무효 클릭 방지). 확인할 수 없으면 프레임 안으로 본다.
+function framed(){ try{ return root.top !== undefined && root.top !== root.self; }catch(e){ return true; } }
 function canShow(cfg, name, state){
-  if(!state || state.work || state.cover) return false;
+  if(!state || state.work || state.cover || framed()) return false;
   return !!slotOf(cfg, name);
 }
 function html(cfg, name, state){
@@ -52,18 +54,23 @@ let last = {};
 // 최소 30초. 더 짧게 설정해도 30초로 올린다(AdSense 광고 새로고침 금지 대응).
 const refreshMs = cfg => { const v = cfg && cfg.ADS && Number(cfg.ADS.minRefreshSec); return Math.min(3600, Math.max(30, Number.isFinite(v) ? v : 30)) * 1000; };
 // 문제 화면 광고 결정. key: 해설 화면이면 문제 구분값, 답하기 전이면 null.
-//   "new"   해설 화면이고, 직전 요청과 다른 문제이고, 직전 요청 후 minRefresh가 지남 → 새로 요청
-//   "reuse" 붙어 있는 광고 요소가 있음 → 그대로 둔다(다시 요청하지 않음)
-//   "none"  둘 다 아님 → 광고 없음
+//   "none"  답하기 전 화면, 또는 다른 문제의 해설인데 직전 요청 후 minRefresh가 안 지남 → 광고를 지운다
+//   "keep"  같은 해설 화면을 다시 그린 경우이고 광고가 붙어 있음 → 그대로 둔다
+//   "new"   다른 문제의 해설이고 직전 요청 후 minRefresh가 지남(또는 첫 요청) → 새로 요청
+// 다른 화면으로 광고 요소를 넘겨 재사용하지 않는다.
 function decide(prev, key, now, minMs, hasCur){
-  if(key != null && (!prev || (prev.key !== key && now - prev.at >= minMs))) return "new";
-  return hasCur ? "reuse" : "none";
+  if(key == null) return "none";
+  if(prev && prev.key === key) return hasCur ? "keep" : "none";
+  return !prev || now - prev.at >= minMs ? "new" : "none";
 }
-let loaded = false;
+let loaded = false, lastScript = null;
+// once가 아닌 네트워크(adfit)는 새 슬롯을 읽히려고 스크립트를 다시 넣되, 이전 태그는 지워 쌓이지 않게 한다.
 function addScript(src){
+  if(lastScript && lastScript.remove) lastScript.remove();
   const sc = document.createElement("script");
   sc.async = true; sc.src = src; sc.crossOrigin = "anonymous";
   document.head.appendChild(sc);
+  lastScript = sc;
 }
 // 그려진 슬롯을 채운다. 상태가 바뀌어 보여 주면 안 되는 슬롯, 직전 요청 후 minRefresh가 안 지난 슬롯은 지운다.
 function fill(container, cfg, state, now){
@@ -89,11 +96,11 @@ function clear(container){ const els = container.querySelectorAll(".ad"); els.fo
 // 가리기 화면을 띄우기 전에 불러야 광고가 덮이는 순간이 없다.
 function sync(container, state){ return state && (state.work || state.cover) ? clear(container) : 0; }
 // 화면을 다시 그려도 지워지지 않는 자리(host)에 두는 광고. 문제 화면에서 쓴다.
-// 요소를 옮기면 광고 iframe이 다시 로드되므로, 재사용은 host에 붙은 요소를 그대로 두는 것으로만 한다.
 function keep(host, cfg, name, state, key, now){
   if(now == null) now = Date.now();
   if(!canShow(cfg, name, state)){ clear(host); return "none"; }
   const r = decide(last[name], key, now, refreshMs(cfg), !!host.querySelector(".ad"));
+  if(r === "none") clear(host);
   if(r === "new"){
     clear(host);
     host.innerHTML = html(cfg, name, state);
@@ -104,8 +111,8 @@ function keep(host, cfg, name, state, key, now){
   }
   return r;
 }
-const reset = () => { last = {}; };   // 테스트용
-const api = {canShow, html, fill, clear, sync, keep, decide, refreshMs, reset, slotOf, PROVIDERS};
+const reset = () => { last = {}; lastScript = null; loaded = false; };   // 테스트용
+const api = {framed, canShow, html, fill, clear, sync, keep, decide, refreshMs, reset, slotOf, PROVIDERS};
 root.TuunsaAds = api;
 if(typeof module === "object" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

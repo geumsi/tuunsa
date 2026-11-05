@@ -103,13 +103,14 @@ test("minRefreshSec: 기본 30초, 30초 미만 설정은 30초로 올린다", (
   assert.strictEqual(ads.refreshMs({ADS:{minRefreshSec:60}}), 60000);
   assert.strictEqual(ads.refreshMs({ADS:{minRefreshSec:"x"}}), 30000);
 });
-test("decide: 해설 화면에서 다른 문제로 넘어왔고 30초가 지났을 때만 새 요청", () => {
+test("decide: 답하기 전은 없음, 다른 문제 해설이고 30초가 지났을 때만 새 요청, 재사용 없음", () => {
   assert.strictEqual(ads.decide(null, "s:0", 0, MIN, false), "new");                       // 첫 해설
-  assert.strictEqual(ads.decide({key:"s:0", at:0}, null, 5000, MIN, true), "reuse");        // 다음 문제, 답하기 전
-  assert.strictEqual(ads.decide({key:"s:0", at:0}, "s:1", 29999, MIN, true), "reuse");      // 30초 안: 재사용
-  assert.strictEqual(ads.decide({key:"s:0", at:0}, "s:1", 30000, MIN, true), "new");        // 30초 지남
-  assert.strictEqual(ads.decide({key:"s:0", at:0}, "s:0", 999999, MIN, true), "reuse");     // 같은 문제 다시 보기: 새 요청 없음
-  assert.strictEqual(ads.decide({key:"s:0", at:0}, "s:1", 10000, MIN, false), "none");      // 가리기로 지워진 뒤 30초 안: 없음
+  assert.strictEqual(ads.decide({key:"s:0", at:0}, null, 5000, MIN, true), "none");         // 다음 문제, 답하기 전: 지움
+  assert.strictEqual(ads.decide({key:"s:0", at:0}, "s:1", 29999, MIN, false), "none");      // 30초 안: 그 해설엔 광고 없음
+  assert.strictEqual(ads.decide({key:"s:0", at:0}, "s:1", 29999, MIN, true), "none");       // 붙어 있어도 재사용 안 함
+  assert.strictEqual(ads.decide({key:"s:0", at:0}, "s:1", 30000, MIN, false), "new");       // 30초 지남
+  assert.strictEqual(ads.decide({key:"s:0", at:0}, "s:0", 999999, MIN, true), "keep");     // 같은 해설을 다시 그림: 그대로
+  assert.strictEqual(ads.decide({key:"s:0", at:0}, "s:0", 999999, MIN, false), "none");    // 지워진 뒤 같은 해설: 다시 넣지 않음
 });
 
 // keep()용 가짜 host: innerHTML로 광고 하나가 붙고, push 횟수를 센다.
@@ -123,17 +124,21 @@ function fakeHost(){
     querySelectorAll(sel){ return this.el && (sel === ".ad" || !("filled" in this.el.dataset)) ? [this.el] : []; }};
   return host;
 }
-test("keep: 30초 안에 문제를 넘기면 같은 광고 요소를 그대로 두고 다시 요청하지 않는다", () => {
+test("keep: 다음 문제로 넘어가면 광고를 지우고, 30초 안의 해설에는 넣지 않으며, 지나면 새로 요청", () => {
   const cfg = sense({quiz:"1234567890"}), host = fakeHost();
   assert.strictEqual(ads.keep(host, cfg, "quiz", on, "s:0", 0), "new");
   const first = host.el;
   assert.strictEqual(global.adsbygoogle.length, 1);
-  assert.strictEqual(ads.keep(host, cfg, "quiz", on, null, 3000), "reuse");      // 다음 문제(답 전)
-  assert.strictEqual(ads.keep(host, cfg, "quiz", on, "s:1", 8000), "reuse");     // 다음 해설, 30초 안
+  assert.strictEqual(ads.keep(host, cfg, "quiz", on, "s:0", 1000), "keep");      // 같은 해설 다시 그림
   assert.strictEqual(host.el, first);
+  assert.strictEqual(ads.keep(host, cfg, "quiz", on, null, 3000), "none");       // 다음 문제(답 전): 지움
+  assert.strictEqual(host.el, null);
+  assert.strictEqual(ads.keep(host, cfg, "quiz", on, "s:1", 8000), "none");      // 다음 해설, 30초 안: 없음
+  assert.strictEqual(host.el, null);
   assert.strictEqual(global.adsbygoogle.length, 1);
+  assert.strictEqual(ads.keep(host, cfg, "quiz", on, null, 20000), "none");
   assert.strictEqual(ads.keep(host, cfg, "quiz", on, "s:2", 31000), "new");      // 30초 지남
-  assert.notStrictEqual(host.el, first);
+  assert.ok(host.el && host.el !== first);
   assert.strictEqual(global.adsbygoogle.length, 2);
 });
 test("keep: 가리기·업무모드면 지우고, 풀린 뒤 30초 안에는 다시 넣지 않는다", () => {
@@ -156,4 +161,33 @@ test("fill: 같은 슬롯은 30초 안에 다시 요청하지 않는다(결과·
   assert.ok(els[0].removed, "30초 안이면 자리를 지운다");
   els.push({dataset:{ad:"formulas"}, removed:false, remove(){ this.removed = true; }});
   assert.strictEqual(ads.fill(b.box, cfg, on, 30000), 1);
+});
+
+test("다른 사이트의 iframe 안이면 광고를 그리지 않는다", () => {
+  const cfg = sense({quiz:"1234567890"});
+  const T = global.top, S = global.self;
+  try{
+    global.self = globalThis; global.top = {};
+    assert.strictEqual(ads.framed(), true);
+    assert.strictEqual(ads.html(cfg, "quiz", on), "");
+    global.top = globalThis;
+    assert.strictEqual(ads.framed(), false);
+    assert.ok(ads.html(cfg, "quiz", on).includes("adsbygoogle"));
+  } finally { global.top = T; global.self = S; }
+});
+test("adfit 스크립트 태그는 쌓이지 않는다", () => {
+  ads.reset();
+  const scripts = [];
+  global.document = {createElement: () => { const sc = {dataset:{}, remove(){ scripts.splice(scripts.indexOf(sc), 1); }}; return sc; }, head: {appendChild: sc => scripts.push(sc)}};
+  const cfg = {ADS:{provider:"adfit", slots:{quiz:"DAN-abc123XYZ", result:"DAN-abc123XYZ"}}};
+  [["quiz", 0], ["result", 1000], ["quiz", 40000]].forEach(([n, t]) => {
+    const el = {dataset:{ad:n}, remove(){}};
+    ads.fill({querySelectorAll: () => ("filled" in el.dataset) ? [] : [el]}, cfg, on, t);
+  });
+  assert.strictEqual(scripts.length, 1);
+});
+test("app.js: 답하기 전에는 문제 화면 광고 키를 넘기지 않는다(지움)", () => {
+  const src = read("app.js");
+  assert.ok(src.includes("adQuiz(done ? `${S.startedAt}:${S.i}` : null)"));
+  assert.ok(src.includes("const Q = Object.create(null)"));
 });

@@ -1,5 +1,7 @@
 (function(){
 "use strict";
+// 다른 사이트가 iframe으로 감싸면 본문을 그리지 않고 광고도 불러오지 않는다(무효 클릭 방지). 원 사이트 링크만 보여 준다.
+if(window.TuunsaSite && window.TuunsaSite.framed()){ window.TuunsaSite.frameNotice(window.SITE_CONFIG || {}); return; }
 
 /* ---------- data ---------- */
 const D = window.QUIZ_DATA || {};
@@ -22,7 +24,7 @@ const SUBJECTS = [
 const ORDER = ["s1_tax","s1_product","s1_realestate","s2_alt","s2_global","s2_analysis","s2_risk",
   "s3_ethics","s3_law","s3_kofia","s3_equity","s3_bond","s3_deriv","s3_perf","s3_macro","s3_portfolio","s0_2026"];
 const AREAS = ORDER.filter(id => D[id] && Array.isArray(D[id].questions));
-const Q = {};          // qid -> question (with area)
+const Q = Object.create(null);   // qid -> question (with area). 프로토타입이 없어 Q["constructor"] 같은 키가 걸리지 않는다
 AREAS.forEach(id => D[id].questions.forEach(q => { Q[q.id] = Object.assign({area:id}, q); }));
 const subjOf = n => SUBJECTS.find(s => s.n === n);
 const areaColor = id => subjOf(D[id].subject).color;
@@ -31,11 +33,13 @@ const areaColor = id => subjOf(D[id].subject).color;
 const K = {stats:"tuunsa-stats", sess:"tuunsa-session", opts:"tuunsa-opts", theme:"tuunsa-theme", mock:"tuunsa-mock", work:"tuunsa-work"};
 function load(k, d){ try{ const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; }catch(e){ return d; } }
 function save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
-let STATS = load(K.stats, {});
-let OPTS = Object.assign({shuffleQ:true, shuffleC:true}, load(K.opts, {}));
-let MOCK = Object.assign({runs:0, seen:{}}, load(K.mock, {}));   // 모의고사 출제 이력: qid -> 출제 횟수
-let S = load(K.sess, null);
-if (S && (!Array.isArray(S.items) || S.items.some(it => !Q[it.qid]))) S = null;
+// 저장값은 state.js로 타입·범위·알려진 id를 검사하고, 어긋나면 버린다(같은 출처의 다른 페이지가 바꿔 넣을 수 있음).
+const V = window.TuunsaState;
+const hasQ = id => typeof id === "string" && V.own(Q, id), isMc = id => Q[id].type === "mc";
+let STATS = V.stats(load(K.stats, {}), hasQ);
+let OPTS = V.opts(load(K.opts, {}));
+let MOCK = V.mock(load(K.mock, {}), hasQ);   // 모의고사 출제 이력: qid -> 출제 횟수
+let S = V.session(load(K.sess, null), hasQ, isMc);
 
 /* ---------- helpers ---------- */
 const $view = document.getElementById("view");
@@ -70,8 +74,8 @@ const notesHtml = (q, order, picked) => !Array.isArray(q.choiceNotes) ? "" : `<d
 // 광고 슬롯(ads.js). 업무모드·화면 가리기 중에는 그리지 않는다.
 const adHtml = name => ADS ? ADS.html(CFG, name, {work:WORK, cover:COVER}) : "";
 const adFill = () => { if(ADS) ADS.fill($view, CFG, {work:WORK, cover:COVER}); };
-// 문제 화면 광고는 #view 밖 #adQuiz에 두어 화면을 다시 그려도 요소가 남는다.
-// 새 요청은 해설 화면에서 다른 문제로 넘어왔고 직전 요청 후 ADS.minRefreshSec이 지났을 때만. 그 전에는 붙어 있는 광고를 그대로 둔다.
+// 문제 화면 광고는 #view 밖 #adQuiz에 둔다. 답하기 전 화면에서는 지우고(오클릭 방지), 답한 뒤에만 그린다.
+// 새 요청은 다른 문제의 해설이고 직전 요청 후 ADS.minRefreshSec이 지났을 때만. 30초 안이면 그 해설에는 광고가 없다(재사용하지 않음).
 const $adQuiz = document.getElementById("adQuiz");
 const adQuiz = key => { if(ADS && $adQuiz) ADS.keep($adQuiz, CFG, "quiz", {work:WORK, cover:COVER}, key); };
 const adQuizOff = () => { if(ADS && $adQuiz) ADS.clear($adQuiz); };
@@ -166,7 +170,7 @@ function renderHome(){
     </div>
     ${resume ? `<button class="btn primary block" id="resume">이어서 풀기 · ${esc(S.title)} ${S.i+1}/${S.items.length}</button>` : ""}
     <button class="btn ${resume ? "" : "primary"} block" id="mock">실전 모의고사 100문항 <span class="small" style="font-weight:500">· 실제 출제 비율</span></button>
-    <p class="muted small mockinfo">${MOCK.runs ? `모의고사 ${MOCK.runs}회 · 지금까지 출제된 문제 ${mockSeenCount()} / ${mockPool()}` : "풀 때마다 다른 문제가 나옵니다. 문제은행을 한 바퀴 다 돌 때까지 같은 문제는 다시 나오지 않습니다."}</p>
+    <p class="muted small mockinfo">${MOCK.runs ? `모의고사 ${esc(MOCK.runs)}회 · 지금까지 출제된 문제 ${esc(mockSeenCount())} / ${esc(mockPool())}` : "풀 때마다 다른 문제가 나옵니다. 문제은행을 한 바퀴 다 돌 때까지 같은 문제는 다시 나오지 않습니다."}</p>
     <button class="btn block" id="calc">계산 문제만 풀기 <span class="small" style="font-weight:500">· ${calcIds().length}문제, 계산기 꿀팁 포함</span></button>
     ${wrong ? `<button class="btn block" id="wrong">오답노트 ${wrong}문제 다시 풀기</button>` : ""}
     <div class="opts">
@@ -188,7 +192,7 @@ function renderHome(){
       ${s.n ? `<p class="muted small" style="margin:-4px 0 10px">${esc(s.full)}</p>` : `<p class="muted small" style="margin:-4px 0 10px">세법 개정, 시험 일정·구성 등 정리노트 이후 바뀐 내용</p>`}
       <div class="areas">${areas.map(a => {
         const st = areaStats(a), d = D[a];
-        return `<button class="card area" data-area="${a}" style="--c:${s.color}">
+        return `<button class="card area" data-area="${esc(a)}" style="--c:${s.color}">
           <span class="t">${esc(d.title)}</span>
           <span class="m">${d.examCount ? `시험 ${d.examCount}문항 · ` : ""}문제 ${st.total}개 · 푼 문제 ${st.seen}${st.seen ? ` · 정답 ${st.good}` : ""}</span>
           <span class="meter" aria-hidden="true"><i class="g" style="width:${st.good/st.total*100}%"></i><i class="b" style="width:${st.bad/st.total*100}%"></i></span>
@@ -243,7 +247,7 @@ function renderQuiz(){
     body = `<div class="choices">${it.order.map((orig, k) => {
       let cls = "";
       if(done){ cls = orig === q.answer ? "correct" : (orig === picked ? "wrong" : "dim"); }
-      return `<button class="choice ${cls}" data-c="${orig}" ${done ? "disabled" : ""}><span class="n">${k+1}</span><span>${esc(q.choices[orig])}</span></button>`;
+      return `<button class="choice ${cls}" data-c="${esc(orig)}" ${done ? "disabled" : ""}><span class="n">${k+1}</span><span>${esc(q.choices[orig])}</span></button>`;
     }).join("")}</div>`;
   }
   let verdict = "";
@@ -400,9 +404,9 @@ function renderFormulas(){
       ${groups.map(g => {
         const cq = D[g.area].questions.filter(q => q.calc).map(q => q.id);
         return `<div class="card fgroup">
-          <div class="fhead"><b>${esc(D[g.area].title)}</b>${cq.length ? `<button class="btn small-btn" data-qs="${cq.join(",")}" data-title="${esc(D[g.area].title)} 계산 문제">계산 문제 ${cq.length}개</button>` : ""}</div>
+          <div class="fhead"><b>${esc(D[g.area].title)}</b>${cq.length ? `<button class="btn small-btn" data-qs="${esc(cq.join(","))}" data-title="${esc(D[g.area].title)} 계산 문제">계산 문제 ${cq.length}개</button>` : ""}</div>
           ${g.items.map(it => `<div class="fitem${hide ? " hid" : ""}">
-            <div class="fname">${esc(it.name)}${it.qs ? `<button class="linkbtn fq" data-qs="${it.qs.join(",")}" data-title="${esc(it.name)}">문제 →</button>` : ""}</div>
+            <div class="fname">${esc(it.name)}${it.qs ? `<button class="linkbtn fq" data-qs="${esc(it.qs.join(","))}" data-title="${esc(it.name)}">문제 →</button>` : ""}</div>
             <button class="fbody" aria-label="${esc(it.name)} 공식 보기"><span class="ff">${esc(it.f)}</span><span class="fm">${esc(it.memo || "")}</span><span class="fcover">눌러서 보기</span></button>
           </div>`).join("")}
         </div>`;
@@ -411,10 +415,14 @@ function renderFormulas(){
   });
   h += adHtml("formulas");
   $view.innerHTML = h;
-  document.getElementById("optHide").onchange = e => { OPTS.hideF = e.target.checked; save(K.opts, OPTS); renderFormulas(); };
+  // 화면을 다시 그리지 않고 클래스만 바꾼다. 다시 그리면 같은 화면에서 광고를 다시 요청하게 된다.
+  document.getElementById("optHide").onchange = e => {
+    OPTS.hideF = e.target.checked; save(K.opts, OPTS);
+    $view.querySelectorAll(".fitem").forEach(f => { f.classList.toggle("hid", OPTS.hideF); f.classList.remove("show"); });
+  };
   document.getElementById("calcAll").onclick = () => startFromTab(startCalc);
   $view.querySelectorAll("[data-qs]").forEach(b => b.onclick = () => startFromTab(() => start("calc", b.dataset.title, b.dataset.qs.split(",").filter(id => Q[id]))));
-  $view.querySelectorAll(".fitem.hid .fbody").forEach(b => b.onclick = () => b.parentNode.classList.toggle("show"));
+  $view.querySelectorAll(".fitem .fbody").forEach(b => b.onclick = () => { if(b.parentNode.classList.contains("hid")) b.parentNode.classList.toggle("show"); });
   adFill();
   window.scrollTo(0,0);
 }
@@ -504,7 +512,7 @@ function renderCalcGuide(){
 
 /* ---------- theme ---------- */
 const THEMES = ["system","light","dark"];
-let theme = load(K.theme, "system");
+let theme = V.oneOf(load(K.theme, "system"), THEMES, "system");
 function applyTheme(){
   const root = document.documentElement, b = document.getElementById("themeBtn");
   if(theme === "system") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", theme);
@@ -519,7 +527,7 @@ applyTheme();
 
 /* ---------- work mode & cover ---------- */
 // 업무모드: 이름·탭 제목·아이콘·색을 문서처럼 바꾼다. 커버: Esc 두 번(모바일은 상단 버튼)으로 화면 전체를 메모로 가린다.
-let WORK = !!load(K.work, false), COVER = false, titleP = "", realTitle = document.title;
+let WORK = load(K.work, false) === true, COVER = false, titleP = "", realTitle = document.title;
 const appName = () => WORK ? "Weekly Brief" : FULL_NAME;
 function setTitle(p){   // p: 문자열 또는 [평소, 업무모드]
   titleP = p; const t = Array.isArray(p) ? p[WORK ? 1 : 0] : p;

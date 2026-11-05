@@ -53,6 +53,7 @@ data/calcguide.js 계산기 사용법 탭 내용 (계산기 그림 키 배치는
 ```
 config.js    사이트 이름(SITE_NAME·BRAND), 주소(SITE_URL), 광고(ADS), 문의(CONTACT) 등 설정
 site.js      하단 고지·사례 기준일·정정 요청 문구 (앱과 tools 공용)
+state.js     localStorage 값 검증 (타입·범위·알려진 문제 id, 어긋나면 버림)
 ads.js       광고 슬롯. ADS.provider가 null이면 광고 코드를 그리지도 불러오지도 않음
 tools/build-pages.js    문제별 정적 HTML과 sitemap 생성 (node tools/build-pages.js --out 폴더)
 tools/sync-site.js      config.js를 고친 뒤 실행. index.html head, privacy·terms·404, manifest, robots, sitemap, ads.txt, og 이미지,
@@ -67,7 +68,9 @@ tests/       node --test tests/*.test.js
 node tools/sync-site.js --url https://geumsi.com/tuunsa/ --cname && node tools/build-pages.js
 ```
 
-광고 자리는 문제 화면(답한 뒤 '다음 문제' 버튼 아래), 결과 화면 맨 아래, 공식 암기·계산기 사용법 탭 맨 아래, 정적 문제 페이지 하단이며 config.js 슬롯으로 하나씩 켜고 끕니다. 업무모드와 화면 가리기 중에는 광고를 DOM에서 지우고(CSS로 숨기지 않음), 가리기를 풀어도 다시 넣지 않고 다음 화면 전환 때만 그립니다. 같은 광고 자리는 직전 요청 후 `ADS.minRefreshSec`(기본·최소 30초)이 지나야 다시 요청하고, 문제 화면 광고는 그 전까지 붙어 있는 광고를 그대로 둡니다. `index.html#q=문제id`로 열면 그 문제부터 같은 영역을 이어서 풉니다.
+다른 사이트가 iframe으로 감싸면 본문과 광고를 그리지 않고 원 사이트 링크만 보여 줍니다(정적 페이지 포함). GitHub Pages는 응답 헤더를 정할 수 없어 JS와 CSP 메타로 처리합니다.
+
+광고 자리는 문제 화면(답한 뒤에만, '다음 문제' 버튼 아래. 다음 문제로 넘어가면 지움), 결과 화면 맨 아래, 공식 암기·계산기 사용법 탭 맨 아래, 정적 문제 페이지 하단이며 config.js 슬롯으로 하나씩 켜고 끕니다. 업무모드와 화면 가리기 중에는 광고를 DOM에서 지우고(CSS로 숨기지 않음), 가리기를 풀어도 다시 넣지 않고 다음 화면 전환 때만 그립니다. 같은 광고 자리는 직전 요청 후 `ADS.minRefreshSec`(기본·최소 30초)이 지나야 다시 요청하고, 그 전의 해설 화면에는 광고를 넣지 않습니다. `index.html#q=문제id`로 열면 그 문제부터 같은 영역을 이어서 풉니다.
 
 ## 주의
 
