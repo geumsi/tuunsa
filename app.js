@@ -333,8 +333,15 @@ function renderResult(){
 function setTab(name){
   document.querySelectorAll("#tabs a").forEach(a => a.classList.toggle("on", a.dataset.tab === name));
 }
+// #q=문제id: 정적 문제 페이지의 '사이트에서 풀어보기' 링크. 그 문제부터 같은 영역을 이어서 푼다.
+function startFrom(id){
+  const a = Q[id].area, rest = D[a].questions.map(q => q.id).filter(x => x !== id);
+  start("area", D[a].title, [id].concat(OPTS.shuffleQ ? shuffle(rest) : rest), true);
+}
 function route(initial){
   const h = location.hash;
+  const m = /^#q=([A-Za-z0-9_]+)$/.exec(h);
+  if(m){ history.replaceState(null, "", location.pathname + location.search); if(Q[m[1]]) return startFrom(m[1]); }
   if(h === "#formulas") return renderFormulas();
   if(h === "#calculator") return renderCalcGuide();
   if(!initial && S && S.i < S.items.length) return renderQuiz();
