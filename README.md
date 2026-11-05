@@ -2,7 +2,7 @@
 
 투자자산운용사 시험 대비 퀴즈 사이트입니다. 휴대폰과 노트북 브라우저에서 바로 열립니다.
 
-**사이트:** <!-- site:url -->https://jeongtai.github.io/tuunsa-quiz/<!-- /site:url --> (config.js SITE_URL, sync-site가 고침)
+**사이트:** <!-- site:url -->https://geumsi.github.io/tuunsa/<!-- /site:url --> (config.js SITE_URL, sync-site가 고침)
 
 ## 기능
 

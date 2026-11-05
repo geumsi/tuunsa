@@ -4,7 +4,7 @@ window.SITE_CONFIG = {
   SITE_NAME: "투운사 모의고사",   // 이 시험 사이트 이름
   BRAND: "금시초문",               // 여러 자격증을 묶는 통합 브랜드(운영 주체 이름). 제목 끝·하단 고지·약관에 쓴다
   BRAND_SUB: "금융자격증 문제풀이", // 브랜드 부제. 브랜드만으로는 검색에서 묻혀서 함께 쓴다
-  SITE_URL: "https://jeongtai.github.io/tuunsa-quiz/",   // 끝의 / 포함. 바꿀 때는 직접 고치지 말고 README의 sync-site --url 명령을 쓴다
+  SITE_URL: "https://geumsi.github.io/tuunsa/",   // 끝의 / 포함. 바꿀 때는 직접 고치지 말고 README의 sync-site --url 명령을 쓴다
   // 조직 geumsi로 옮긴 직후 임시 주소: "https://geumsi.github.io/tuunsa/"
   // FUTURE_URL: "https://geumsi.com/tuunsa/"   도메인을 허브 저장소 geumsi/geumsi.github.io에 연결한 뒤
   // provider: null이면 광고 코드를 일절 그리거나 불러오지 않는다.

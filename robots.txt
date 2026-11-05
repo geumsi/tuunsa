@@ -1,5 +1,6 @@
-# 주의: https://jeongtai.github.io/tuunsa-quiz/은 도메인 루트가 아니라서 크롤러가 이 파일을 읽지 않는다. 효력이 있는 것은 허브 루트의 robots.txt(tools/hub/robots.txt 복사본)다.
+# 주의: https://geumsi.github.io/tuunsa/은 도메인 루트가 아니라서 크롤러가 이 파일을 읽지 않는다. 효력이 있는 것은 허브 루트의 robots.txt(tools/hub/robots.txt 복사본)다.
 User-agent: *
 Allow: /
 
-Sitemap: https://jeongtai.github.io/tuunsa-quiz/sitemap.xml
+Sitemap: https://geumsi.github.io/tuunsa/sitemap.xml
+Sitemap: https://geumsi.github.io/tuunsa/q/sitemap.xml
