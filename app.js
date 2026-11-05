@@ -8,6 +8,8 @@ const FORMULAS = window.FORMULA_DATA || [];
 const GUIDE = window.CALCGUIDE || null;
 const CFG = window.SITE_CONFIG || {};
 const ADS = window.TuunsaAds || null;
+const SITE = window.TuunsaSite || null;
+const SITE_NAME = SITE ? SITE.name(CFG) : "투운사 모의고사";
 // 계산 문제는 data/calc.js 한 곳에 모아 두고, 각 문항의 area 영역에 합친다.
 CALC.questions.forEach(q => { if(D[q.area] && !D[q.area].questions.some(x => x.id === q.id)) D[q.area].questions.push(q); });
 const SUBJECTS = [
@@ -54,10 +56,10 @@ const rich = t => String(t || "").split("\n").reduce((acc, line) => {
 }, []).map(b => b.ul ? `<ul>${b.items.map(i => `<li>${esc(i)}</li>`).join("")}</ul>` : `<p>${esc(b.text)}</p>`).join("");
 const memoHtml = q => Array.isArray(q.memo) && q.memo.length ? `<div class="memo"><h3>암기</h3><ul>${q.memo.map(m => `<li>${esc(m)}</li>`).join("")}</ul></div>` : "";
 // 사례: real은 출처가 있는 실제 사례, example은 가상의 예시
-const caseHtml = c => !c || !c.text ? "" : `<div class="case ${c.type === "real" ? "real" : "ex"}">
+const caseHtml = (c, qid) => !c || !c.text ? "" : `<div class="case ${c.type === "real" ? "real" : "ex"}">
   <p class="case-h"><span class="case-tag">${c.type === "real" ? `실제 사례${c.year ? ` · ${esc(c.year)}` : ""}` : "가상 사례"}</span>${c.title ? `<b>${esc(c.title)}</b>` : ""}</p>
-  ${rich(c.text)}${c.type === "real" && /^https:\/\//.test(c.src || "") ? `<a class="case-src" href="${esc(c.src)}" target="_blank" rel="noopener noreferrer">출처: ${esc(c.srcName || c.src.replace(/^https:\/\/(www\.)?/, "").split("/")[0])}</a>` : ""}</div>`;
-const practiceHtml = q => q.practice || q.case ? `<div class="practice"><h3>실무에서는</h3>${rich(q.practice)}${caseHtml(q.case)}</div>` : "";
+  ${rich(c.text)}${c.type === "real" && /^https:\/\//.test(c.src || "") ? `<a class="case-src" href="${esc(c.src)}" target="_blank" rel="noopener noreferrer">출처: ${esc(c.srcName || c.src.replace(/^https:\/\/(www\.)?/, "").split("/")[0])}</a>` : ""}${c.type === "real" && SITE ? `<p class="case-note">${SITE.caseNote(CFG, c, `문제 ${qid} · 사례 「${c.title || ""}」`)}</p>` : ""}</div>`;
+const practiceHtml = q => q.practice || q.case ? `<div class="practice"><h3>실무에서는</h3>${rich(q.practice)}${caseHtml(q.case, q.id)}</div>` : "";
 const notesHtml = (q, order, picked) => !Array.isArray(q.choiceNotes) ? "" : `<div class="cnotes"><h3>보기별 해설</h3>${order.map((orig, k) => {
   const n = q.choiceNotes[orig] || {}, isAns = orig === q.answer;
   const tag = isAns ? `<span class="ctag good">정답</span>` : (orig === picked ? `<span class="ctag bad">내 선택</span>` : "");
@@ -94,6 +96,7 @@ function startSubject(n){
   const s = subjOf(n); start("subject", `${s.name} 전체`, ids);
 }
 const calcIds = () => Object.keys(Q).filter(id => Q[id].calc);
+const realCases = Object.keys(Q).filter(id => Q[id].case && Q[id].case.type === "real").length;
 function startCalc(){ start("calc", "계산 문제", calcIds()); }
 function startWrong(){ start("wrong", "오답노트", wrongIds()); }
 const MOCK_AREAS = () => AREAS.filter(a => D[a].subject > 0 && D[a].examCount > 0);
@@ -128,7 +131,26 @@ function renderHome(){
   const good = Object.keys(STATS).filter(id => Q[id] && STATS[id].last === 1).length;
   const wrong = wrongIds().length;
   const resume = S && S.i < S.items.length;
-  let h = `<section class="card hero">
+  const fresh = !seen && !resume;
+  const nForm = FORMULAS.reduce((n, g) => n + g.items.length, 0);
+  // 기록이 없는 첫 방문자에게는 통계 대신 소개 카드를 보여 준다. 한 문제라도 풀면 통계 카드로 바뀐다.
+  let h = fresh ? `<section class="card hero intro">
+    <h1>투자자산운용사 문제 ${total}개, 보기마다 해설</h1>
+    <p class="muted small">가입 없이 바로 풉니다. 기록은 이 기기 브라우저에만 저장됩니다.</p>
+    <ul class="facts">
+      <li><b>4</b><span>보기 4개마다 맞고 틀린 이유 (용어, 이론, 실무)</span></li>
+      <li><b>100</b><span>실전 모의고사 100문항, 실제 출제 비율과 과목별 과락 채점</span></li>
+      <li><b>${realCases}</b><span>실제 사례 ${realCases}건과 출처 링크</span></li>
+    </ul>
+    <button class="btn primary block" id="mock">실전 모의고사 100문항 시작</button>
+    <button class="btn block" id="pick">과목별로 골라 풀기</button>
+    <div class="chips">
+      <button class="chip" id="calc">계산 문제 ${calcIds().length}개</button>
+      <a class="chip" href="#formulas">공식 ${nForm}개</a>
+      <button class="chip" id="workInfo">업무모드</button>
+    </div>
+  </section>` : `<section class="card hero">
+    <h1 class="sr-only">투자자산운용사 문제와 해설</h1>
     <p><b>과목을 고르고 문제를 풀면 바로 정답과 해설이 나옵니다.</b> <span class="muted small">진행 기록은 이 기기 브라우저에 저장됩니다.</span></p>
     <div class="stats">
       <div class="stat"><b>${total}</b><span>전체 문제</span></div>
@@ -139,14 +161,14 @@ function renderHome(){
     <button class="btn ${resume ? "" : "primary"} block" id="mock">실전 모의고사 100문항 <span class="small" style="font-weight:500">· 실제 출제 비율</span></button>
     <p class="muted small mockinfo">${MOCK.runs ? `모의고사 ${MOCK.runs}회 · 지금까지 출제된 문제 ${mockSeenCount()} / ${mockPool()}` : "풀 때마다 다른 문제가 나옵니다. 문제은행을 한 바퀴 다 돌 때까지 같은 문제는 다시 나오지 않습니다."}</p>
     <button class="btn block" id="calc">계산 문제만 풀기 <span class="small" style="font-weight:500">· ${calcIds().length}문제, 계산기 꿀팁 포함</span></button>
-    <button class="btn block" id="wrong" ${wrong ? "" : "disabled"}>오답노트 ${wrong ? `${wrong}문제 다시 풀기` : "· 아직 틀린 문제 없음"}</button>
+    ${wrong ? `<button class="btn block" id="wrong">오답노트 ${wrong}문제 다시 풀기</button>` : ""}
     <div class="opts">
       <label><input type="checkbox" id="optQ" ${OPTS.shuffleQ ? "checked" : ""}> 문제 순서 섞기</label>
       <label><input type="checkbox" id="optC" ${OPTS.shuffleC ? "checked" : ""}> 보기 순서 섞기</label>
     </div>
   </section>
   <div class="links2">
-    <a class="card linkcard" href="#formulas"><b>공식 암기</b><span>외워야 할 공식 ${FORMULAS.reduce((n, g) => n + g.items.length, 0)}개를 영역별로, 가리고 외우기 가능</span></a>
+    <a class="card linkcard" href="#formulas"><b>공식 암기</b><span>외워야 할 공식 ${nForm}개를 영역별로, 가리고 외우기 가능</span></a>
     <a class="card linkcard" href="#calculator"><b>계산기 사용법</b><span>일반·공학용 어떤 걸 쓸지, 키 누르는 법, 시험장 요령</span></a>
   </div>`;
   SUBJECTS.slice().sort((a,b) => (a.n||9) - (b.n||9)).forEach(s => {
@@ -171,8 +193,6 @@ function renderHome(){
   h += `<p class="foot">출처: 개인 정리노트 「금융 관련 내용 정리」를 바탕으로 문제화하고, 2026년 세법·시험 변경사항을 반영했습니다.
     시험 구성과 합격 기준(과목별 40% 이상, 전체 70% 이상)은 한국금융투자협회 공지를 기준으로 합니다.
     최종 확인은 <a href="https://license.kofia.or.kr" target="_blank" rel="noopener">금융투자협회 자격시험센터</a>에서 하세요.<br>
-    이 사이트는 개인이 만든 학습용 사이트이며 한국금융투자협회의 공식 자료가 아닙니다.<br>
-    <a href="privacy.html">개인정보처리방침</a> · <a href="terms.html">이용약관</a>${typeof CFG.CONTACT === "string" && CFG.CONTACT ? ` · 문의 ${esc(CFG.CONTACT)}` : ""}<br>
     <button class="linkbtn" id="reset">학습 기록 모두 지우기</button></p>`;
   $view.innerHTML = h;
   const on = (id, fn) => { const el = document.getElementById(id); if(el) el.onclick = fn; };
@@ -181,8 +201,10 @@ function renderHome(){
     S.i = n < 0 ? S.items.length : n; save(K.sess, S); renderQuiz();
   });
   on("mock", startMock); on("wrong", startWrong); on("calc", startCalc);
-  document.getElementById("optQ").onchange = e => { OPTS.shuffleQ = e.target.checked; save(K.opts, OPTS); };
-  document.getElementById("optC").onchange = e => { OPTS.shuffleC = e.target.checked; save(K.opts, OPTS); };
+  on("pick", () => { const el = $view.querySelector(".subject"); if(el) el.scrollIntoView({behavior:"smooth", block:"start"}); });
+  on("workInfo", () => toast("업무모드: 화면 색을 무채색으로 바꾸고 제목을 간단하게 표시합니다. 화면 가리기: Esc 두 번으로 잠시 화면을 가립니다."));
+  const opt = (id, k) => { const el = document.getElementById(id); if(el) el.onchange = e => { OPTS[k] = e.target.checked; save(K.opts, OPTS); }; };
+  opt("optQ", "shuffleQ"); opt("optC", "shuffleC");
   $view.querySelectorAll("[data-area]").forEach(b => b.onclick = () => startArea(b.dataset.area));
   $view.querySelectorAll("[data-subj]").forEach(b => b.onclick = () => startSubject(+b.dataset.subj));
   let armed = false;
@@ -379,11 +401,13 @@ function renderFormulas(){
       }).join("")}
     </section>`;
   });
+  h += adHtml("formulas");
   $view.innerHTML = h;
   document.getElementById("optHide").onchange = e => { OPTS.hideF = e.target.checked; save(K.opts, OPTS); renderFormulas(); };
   document.getElementById("calcAll").onclick = () => startFromTab(startCalc);
   $view.querySelectorAll("[data-qs]").forEach(b => b.onclick = () => startFromTab(() => start("calc", b.dataset.title, b.dataset.qs.split(",").filter(id => Q[id]))));
   $view.querySelectorAll(".fitem.hid .fbody").forEach(b => b.onclick = () => b.parentNode.classList.toggle("show"));
+  adFill();
   window.scrollTo(0,0);
 }
 
@@ -462,8 +486,10 @@ function renderCalcGuide(){
       ${e.fin ? `<p class="small fin">${kbd(e.fin)}</p>` : ""}
     </div>`).join("")}
     <h2 class="gh">시험장 요령</h2>
-    <div class="card gsec"><ol class="numlist">${GUIDE.exam.map((x, i) => `<li><span class="nb">${i+1}</span><div><b>${esc(x.t)}</b><p>${kbd(x.d)}</p></div></li>`).join("")}</ol></div>`;
+    <div class="card gsec"><ol class="numlist">${GUIDE.exam.map((x, i) => `<li><span class="nb">${i+1}</span><div><b>${esc(x.t)}</b><p>${kbd(x.d)}</p></div></li>`).join("")}</ol></div>
+    ${adHtml("calc")}`;
   document.getElementById("calcGo").onclick = () => startFromTab(startCalc);
+  adFill();
   window.scrollTo(0,0);
 }
 
@@ -485,7 +511,7 @@ applyTheme();
 /* ---------- work mode & cover ---------- */
 // 업무모드: 이름·탭 제목·아이콘·색을 문서처럼 바꾼다. 커버: Esc 두 번(모바일은 상단 버튼)으로 화면 전체를 메모로 가린다.
 let WORK = !!load(K.work, false), COVER = false, titleP = "", realTitle = document.title;
-const appName = () => WORK ? "Weekly Brief" : "투운사 모의고사";
+const appName = () => WORK ? "Weekly Brief" : SITE_NAME;
 function setTitle(p){   // p: 문자열 또는 [평소, 업무모드]
   titleP = p; const t = Array.isArray(p) ? p[WORK ? 1 : 0] : p;
   realTitle = t ? `${t} · ${appName()}` : appName(); if(!COVER) document.title = realTitle;
@@ -498,18 +524,20 @@ const TABNAMES = {quiz:["문제 풀기","브리핑"], formulas:["공식 암기",
 function applyWork(){
   const root = document.documentElement;
   if(WORK) root.setAttribute("data-work", ""); else root.removeAttribute("data-work");
-  document.querySelector(".brand-text").innerHTML = WORK ? "<b>Weekly Brief</b><small>내부 검토 자료</small>" : "<b>투운사 모의고사</b><small>투자자산운용사 2026</small>";
+  document.querySelector(".brand-text").innerHTML = WORK ? "<b>Weekly Brief</b><small>내부 검토 자료</small>" : `<b>${esc(SITE_NAME)}</b><small>투자자산운용사 2026</small>`;
   document.querySelectorAll("#tabs a").forEach(a => { a.textContent = TABNAMES[a.dataset.tab][WORK ? 1 : 0]; });
   document.querySelector('link[rel="icon"]').href = WORK ? ICONS.doc : ICONS.quiz;
   const b = document.getElementById("workBtn");
   b.setAttribute("aria-pressed", WORK); b.title = WORK ? "업무모드 끄기" : "업무모드 켜기";
   document.getElementById("coverBtn").hidden = !WORK;
-  if(WORK && ADS) ADS.clear(document);
+  if(ADS) ADS.sync(document, {work:WORK, cover:COVER});
   setTitle(titleP);
 }
 const today = () => { const d = new Date(); return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`; };
 function setCover(on){
   COVER = on;
+  // 가리기 화면을 띄우기 전에 광고를 DOM에서 지운다. 덮거나 숨기지 않는다. 풀 때 되살리지 않는다.
+  if(ADS) ADS.sync(document, {work:WORK, cover:COVER});
   let c = document.getElementById("cover");
   if(on && !c){
     c = document.createElement("div"); c.id = "cover";
@@ -526,7 +554,6 @@ function setCover(on){
   }
   if(c) c.hidden = !on;
   document.body.classList.toggle("covered", on);
-  if(on && ADS) ADS.clear(document);
   document.title = on ? "주간 시장 점검 메모" : realTitle;
   document.querySelector('link[rel="icon"]').href = on || WORK ? ICONS.doc : ICONS.quiz;
 }

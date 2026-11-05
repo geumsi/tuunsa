@@ -1,5 +1,7 @@
 // 광고 슬롯. config.js의 ADS.provider가 null이면 아무것도 그리거나 불러오지 않는다.
-// 업무모드·화면 가리기 상태에서는 슬롯을 그리지 않고, 이미 있는 슬롯은 지운다.
+// 업무모드·화면 가리기 상태에서는 슬롯을 그리지 않고, 이미 있는 슬롯은 DOM에서 지운다.
+// CSS로 숨기거나(display:none) 다른 요소로 덮지 않는다. AdSense 정책이 둘 다 금지한다.
+// 지운 슬롯은 상태가 풀려도 되살리지 않고, 다음에 화면을 새로 그릴 때만 다시 그린다.
 (function(root){
 "use strict";
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -66,8 +68,11 @@ function fill(container, cfg, state){
   for(let i = 0; i < n; i++){ try{ p.fill(); }catch(e){} }
   return n;
 }
-function clear(container){ container.querySelectorAll(".ad").forEach(el => el.remove()); }
-const api = {canShow, html, fill, clear, slotOf, PROVIDERS};
+function clear(container){ const els = container.querySelectorAll(".ad"); els.forEach(el => el.remove()); return els.length; }
+// 업무모드·화면 가리기 상태가 바뀔 때 부른다. 켜질 때는 지우고, 꺼질 때는 아무것도 하지 않는다.
+// 가리기 화면을 띄우기 전에 불러야 광고가 덮이는 순간이 없다.
+function sync(container, state){ return state && (state.work || state.cover) ? clear(container) : 0; }
+const api = {canShow, html, fill, clear, sync, slotOf, PROVIDERS};
 root.TuunsaAds = api;
 if(typeof module === "object" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);
