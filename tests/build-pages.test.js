@@ -34,7 +34,7 @@ test("기본은 정답을 접힌 상태로 넣고, --hide-answer면 뺀다", () 
 });
 test("사이트로 돌아가는 링크와 canonical", () => {
   const f = build(area([mc]), cfg, opt())["s1_tax/001.html"];
-  assert.ok(f.includes('href="../../#q=s1_tax_001"'));
+  assert.ok(f.includes('href="../../#q=s1_tax_001">이 영역 이어서 풀기'));
   assert.ok(f.includes('<link rel="canonical" href="https://example.com/q/s1_tax/001.html">'));
 });
 test("id 중복·형식 오류는 막는다", () => {
@@ -44,4 +44,34 @@ test("id 중복·형식 오류는 막는다", () => {
 test("--base에 상위 경로는 쓸 수 없다", () => {
   assert.throws(() => parseArgs(["--base", "../x"]));
   assert.strictEqual(parseArgs(["--base", "/pages"]).base, "pages/");
+});
+
+const real = Object.assign({}, mc, {id:"s1_tax_002", q:"보통 문제", explain:"A증권은 제재를 받았다. 다음 문장.", case:{type:"real", year:"2023", title:"A증권 제재", text:"요약", src:"https://example.com/n"}});
+test("광고는 HTML에 박지 않고 자리와 스크립트만 둔다(업무모드면 그리지 않음)", () => {
+  const f = build(area([mc]), cfg, opt())["s1_tax/001.html"];
+  assert.ok(f.includes('<div class="pgad" id="adPage"></div>'));
+  assert.ok(!f.includes("adsbygoogle"));
+  assert.ok(f.includes('localStorage.getItem("tuunsa-work")'));
+  assert.ok(f.includes('A.html(C,"page",st)'));
+  assert.ok(f.indexOf('id="adPage"') > f.indexOf("이 영역 이어서 풀기"), "광고는 이어서 풀기 버튼 아래");
+  assert.ok(f.indexOf('id="adPage"') < f.indexOf("같은 영역 다른 문제"));
+});
+test("기출이 아님 안내, 하단 고지, 사례 기준일·정정 문구", () => {
+  const c2 = Object.assign({}, cfg, {CASES_CHECKED:"2026-11-03"});
+  const f = build(area([mc, real]), c2, opt())["s1_tax/002.html"];
+  assert.ok(f.includes("실제 기출문제가 아닙니다"));
+  assert.ok(f.includes("시행기관과 관련이 없습니다"));
+  assert.ok(f.includes("기준일 2026-11-03"));
+  assert.ok(f.includes("정정 요청: 문의 메일(준비 중)"));
+});
+test("실제 사례 문제는 title·description에 해설(회사명)을 넣지 않는다", () => {
+  const f = build(area([mc, real]), cfg, opt())["s1_tax/002.html"];
+  const head = f.slice(0, f.indexOf("</head>"));
+  assert.ok(!/<title>[^<]*A증권/.test(head));
+  assert.ok(!/name="description" content="[^"]*A증권/.test(head));
+});
+test("SITE_NAME을 바꾸면 페이지 이름도 바뀐다", () => {
+  const f = build(area([mc]), Object.assign({}, cfg, {SITE_NAME:"새이름"}), opt())["s1_tax/001.html"];
+  assert.ok(f.includes("| 새이름</title>"));
+  assert.ok(!f.includes("투운사 모의고사"));
 });
