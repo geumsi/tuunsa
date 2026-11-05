@@ -1,5 +1,5 @@
 // 사이트 이름·문의처·하단 고지·사례 기준일 문구. 브라우저(app.js)와 node 도구(tools/)가 같이 쓴다.
-// 고지 문구는 법률팀 초안(docs/teams/legal-terms.md)을 따른다.
+// 고지 문구는 법률팀 초안(비공개 문서, 2026-11-05 2라운드)을 따른다.
 (function(root){
 "use strict";
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));

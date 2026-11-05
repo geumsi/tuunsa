@@ -2,13 +2,14 @@
 // config.js(SITE_NAME·BRAND·SITE_URL·CONTACT·ADS)를 정적 파일에 반영한다. 이름이나 도메인이 바뀌면 이것 한 번만 돌린다.
 // 만드는 것: index.html의 site:head·site:brand·site:foot 구역, privacy.html, terms.html, 404.html,
 //            manifest.webmanifest, robots.txt, sitemap.xml, ads.txt, img/og.svg(+ img/og.png),
-//            tools/hub/(허브 저장소 jeongtai.github.io에 복사할 index.html·robots.txt·ads.txt 초안)
+//            tools/hub/(허브 저장소 geumsi/geumsi.github.io에 복사할 index.html·robots.txt·ads.txt 초안),
+//            README.md의 site:url 구역
 // 사용: node tools/sync-site.js [--check] [--png] [--url https://도메인/경로/] [--cname]
 //   --check  파일을 쓰지 않고, config와 어긋난 파일이 있으면 목록을 찍고 종료 코드 1
 //   --png    img/og.svg가 그대로여도 img/og.png를 다시 뽑는다 (gstack browse 필요, 없으면 건너뜀)
 //   --url    config.js의 SITE_URL을 이 값으로 바꾼 뒤 반영한다
 //   --cname  tools/hub/CNAME을 만든다. 이 저장소 루트에는 CNAME을 만들지 않는다.
-//            도메인은 허브 저장소(jeongtai.github.io)에 걸어야 프로젝트 사이트가 도메인/저장소이름/으로 열린다(docs/HUB-SETUP.md)
+//            도메인은 조직 허브 저장소(geumsi/geumsi.github.io)에 걸어야 조직의 프로젝트 사이트가 도메인/저장소이름/으로 열린다(tools/hub/SETUP.md)
 "use strict";
 const fs = require("fs");
 const path = require("path");
@@ -32,9 +33,9 @@ function render(tpl, vars, flags){
   });
 }
 // 시작·끝 표시 사이를 바꾼다. 표시가 없으면 오류.
-function replaceBlock(s, tag, body){
+function replaceBlock(s, tag, body, file){
   const re = new RegExp(`(<!-- site:${tag}\\b[^>]*-->)[\\s\\S]*?(<!-- /site:${tag} -->)`);
-  if(!re.test(s)) throw new Error(`index.html에 site:${tag} 표시가 없습니다`);
+  if(!re.test(s)) throw new Error(`${file || "index.html"}에 site:${tag} 표시가 없습니다`);
   return s.replace(re, (_, a, b) => `${a}${body}${b}`);
 }
 const adsOn = cfg => !!(cfg.ADS && AD_NAMES[cfg.ADS.provider]);
@@ -150,6 +151,7 @@ function outputs(cfg){
   ix = replaceBlock(ix, "brand", `<b>${esc(name)}</b><small>투자자산운용사 2026</small>`);
   ix = replaceBlock(ix, "foot", SITE.footerHtml(cfg, ""));
   out["index.html"] = ix;
+  out["README.md"] = replaceBlock(fs.readFileSync(path.join(ROOT, "README.md"), "utf8"), "url", esc(url), "README.md");
   out["privacy.html"] = page(cfg, {file:"privacy.html", title:"개인정보처리방침", body:tpl("privacy.html"), up:""});
   out["terms.html"] = page(cfg, {file:"terms.html", title:"이용약관", body:tpl("terms.html"), up:""});
   out["404.html"] = page(cfg, {title:"페이지를 찾을 수 없습니다", up:url, noindex:true,
@@ -168,7 +170,7 @@ function outputs(cfg){
   return out;
 }
 
-// 허브(도메인 루트) 초안. 허브 저장소 jeongtai.github.io에 그대로 복사한다. 자격증이 늘면 EXAMS에 더한다.
+// 허브(도메인 루트) 초안. 조직 허브 저장소 geumsi/geumsi.github.io에 그대로 복사한다. 자격증이 늘면 EXAMS에 더한다.
 function hubOutputs(cfg){
   const url = cfg.SITE_URL, hub = hubUrl(url), brand = SITE.brand(cfg) || SITE.name(cfg), sub = SITE.brandSub(cfg);
   const EXAMS = [{name: SITE.name(cfg), exam: "투자자산운용사", desc: "과목별 문제와 보기별 해설, 실전 100문항 모의고사", href: new URL(url).pathname}];
@@ -181,7 +183,7 @@ function hubOutputs(cfg){
 <meta name="viewport" content="width=device-width, initial-scale=1">
 ${SITE.CSP_META}
 ${SITE.FRAME_HEAD}
-<!-- tools/sync-site.js가 만든 허브 초안. 허브 저장소(jeongtai.github.io) 루트에 index.html로 복사한다. docs/HUB-SETUP.md -->
+<!-- tools/sync-site.js가 만든 허브 초안. 조직 허브 저장소(geumsi/geumsi.github.io) 루트에 index.html로 복사한다. tools/hub/SETUP.md -->
 <title>${esc(brand)}${sub ? ` | ${esc(sub)}` : ""}</title>
 <meta name="description" content="${esc(`${brand}${sub ? ` ${sub}` : ""}. 금융자격증 시험 대비 연습문제와 해설.`)}">
 <link rel="canonical" href="${esc(hub)}">
@@ -247,12 +249,12 @@ function main(){
     if(!check) fs.writeFileSync(p, out[f]);
   });
   // 이 저장소 루트의 CNAME은 프로젝트 사이트를 도메인에 따로 묶어 허브 구조(도메인/tuunsa/)를 깨므로 두지 않는다.
-  if(fs.existsSync(path.join(ROOT, "CNAME"))){ console.error("이 저장소 루트에 CNAME이 있습니다. 지우고 허브 저장소에 두세요(docs/HUB-SETUP.md)."); process.exit(1); }
+  if(fs.existsSync(path.join(ROOT, "CNAME"))){ console.error("이 저장소 루트에 CNAME이 있습니다. 지우고 허브 저장소 geumsi/geumsi.github.io에 두세요(tools/hub/SETUP.md)."); process.exit(1); }
   if(args.includes("--cname")){
     const host = new URL(cfg.SITE_URL).hostname;
     if(/\.github\.io$/.test(host)) { console.error(`CNAME 거절: ${cfg.SITE_URL}은 자체 도메인이 아닙니다. --url로 도메인 주소를 먼저 넣으세요.`); process.exit(1); }
     if(!check) fs.writeFileSync(path.join(ROOT, "tools", "hub", "CNAME"), host + "\n");
-    console.log(`tools/hub/CNAME: ${host} (허브 저장소 jeongtai.github.io 루트로 복사)`);
+    console.log(`tools/hub/CNAME: ${host} (허브 저장소 geumsi/geumsi.github.io 루트로 복사)`);
   }
   if(check){
     if(changed.length){ console.log("config.js와 어긋난 파일: " + changed.join(", ") + "\nnode tools/sync-site.js를 돌리세요."); process.exit(1); }

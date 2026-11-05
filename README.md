@@ -2,7 +2,7 @@
 
 투자자산운용사 시험 대비 퀴즈 사이트입니다. 휴대폰과 노트북 브라우저에서 바로 열립니다.
 
-**사이트:** https://jeongtai.github.io/tuunsa-quiz/
+**사이트:** <!-- site:url -->https://jeongtai.github.io/tuunsa-quiz/<!-- /site:url --> (config.js SITE_URL, sync-site가 고침)
 
 ## 기능
 
@@ -62,7 +62,15 @@ tools/sync-site.js      config.js를 고친 뒤 실행. index.html head, privacy
 tests/       node --test tests/*.test.js
 ```
 
-도메인(geumsi.com)을 허브 저장소에 연결하고 이 저장소 이름을 tuunsa로 바꾼 뒤 아래 한 줄을 실행하고, tools/hub/ 파일을 허브 저장소 루트로 복사합니다. 순서와 주의점은 docs/HUB-SETUP.md에 있습니다.
+호스팅은 GitHub 조직 geumsi로 옮깁니다. 허브는 geumsi/geumsi.github.io(geumsi.com 연결), 이 사이트는 geumsi/tuunsa(geumsi.com/tuunsa/)입니다. 순서는 [tools/hub/SETUP.md](tools/hub/SETUP.md)에 있습니다.
+
+조직으로 옮긴 직후, 도메인 연결 전(임시 주소 geumsi.github.io/tuunsa/):
+
+```
+node tools/sync-site.js --url https://geumsi.github.io/tuunsa/ && node tools/build-pages.js
+```
+
+도메인 geumsi.com을 허브 저장소에 연결한 뒤(tools/hub/ 파일을 허브 저장소 루트로 다시 복사):
 
 ```
 node tools/sync-site.js --url https://geumsi.com/tuunsa/ --cname && node tools/build-pages.js

@@ -102,3 +102,22 @@ test("감싸였는지 판단: 확인할 수 없으면 감싼 것으로 본다", 
     assert.strictEqual(SITE.framed(), true);
   } finally { Object.defineProperty(global, "top", {configurable:true, writable:true, value:T}); global.self = S; }
 });
+
+test("README 사이트 주소도 --url 값으로 바뀐다", () => {
+  const out = outputs(Object.assign({}, loadConfig(), {SITE_URL:"https://geumsi.github.io/tuunsa/"}));
+  assert.ok(out["README.md"].includes("<!-- site:url -->https://geumsi.github.io/tuunsa/<!-- /site:url -->"));
+  assert.ok(out["tools/hub/index.html"].includes('<link rel="canonical" href="https://geumsi.github.io/">'));
+});
+test("앱·도구 코드와 README는 docs/를 참조하지 않는다(docs/는 비공개)", () => {
+  const files = ["app.js", "ads.js", "site.js", "state.js", "config.js", "index.html", "README.md", "style.css",
+    "tools/lib.js", "tools/sync-site.js", "tools/build-pages.js", "tools/templates/privacy.html", "tools/templates/terms.html",
+    "tools/templates/og.svg", "tools/hub/index.html", "tools/hub/SETUP.md", "img/og.svg"];
+  const bad = files.filter(f => /docs\//.test(fs.readFileSync(path.join(ROOT, f), "utf8")));
+  assert.deepStrictEqual(bad, []);
+});
+test("허브를 개인 jeongtai.github.io로 가정한 문구가 없다", () => {
+  ["tools/sync-site.js", "tools/hub/SETUP.md", "config.js"].forEach(f => {
+    const t = fs.readFileSync(path.join(ROOT, f), "utf8");
+    assert.ok(!/허브[^\n]{0,20}jeongtai\.github\.io/.test(t), f);
+  });
+});
