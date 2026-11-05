@@ -45,6 +45,7 @@ test("크기 값이 비정상이면 기본 높이를 쓴다", () => {
 
 // 가짜 DOM: 슬롯 요소와 head에 들어간 스크립트 수만 센다.
 function fakeDom(names){
+  ads.reset();
   const scripts = [];
   global.document = {createElement: () => ({dataset:{}}), head: {appendChild: s => scripts.push(s)}};
   const els = names.map(n => ({dataset:{ad:n}, removed:false, remove(){ this.removed = true; }}));
@@ -92,4 +93,67 @@ test("app.js는 가리기 화면을 붙이기 전에 광고를 지운다", () =>
   assert.ok(fn.indexOf("ADS.sync(") < fn.indexOf("appendChild"), "오버레이를 붙이기 전에 지워야 한다");
   const work = src.slice(src.indexOf("function applyWork("), src.indexOf("function setCover("));
   assert.ok(work.includes("ADS.sync("), "applyWork에서 ADS.sync를 불러야 한다");
+});
+
+// 광고 새로고침 제한(ADS.minRefreshSec, 기본·최소 30초)
+const MIN = 30000;
+test("minRefreshSec: 기본 30초, 30초 미만 설정은 30초로 올린다", () => {
+  assert.strictEqual(ads.refreshMs({ADS:{}}), 30000);
+  assert.strictEqual(ads.refreshMs({ADS:{minRefreshSec:5}}), 30000);
+  assert.strictEqual(ads.refreshMs({ADS:{minRefreshSec:60}}), 60000);
+  assert.strictEqual(ads.refreshMs({ADS:{minRefreshSec:"x"}}), 30000);
+});
+test("decide: 해설 화면에서 다른 문제로 넘어왔고 30초가 지났을 때만 새 요청", () => {
+  assert.strictEqual(ads.decide(null, "s:0", 0, MIN, false), "new");                       // 첫 해설
+  assert.strictEqual(ads.decide({key:"s:0", at:0}, null, 5000, MIN, true), "reuse");        // 다음 문제, 답하기 전
+  assert.strictEqual(ads.decide({key:"s:0", at:0}, "s:1", 29999, MIN, true), "reuse");      // 30초 안: 재사용
+  assert.strictEqual(ads.decide({key:"s:0", at:0}, "s:1", 30000, MIN, true), "new");        // 30초 지남
+  assert.strictEqual(ads.decide({key:"s:0", at:0}, "s:0", 999999, MIN, true), "reuse");     // 같은 문제 다시 보기: 새 요청 없음
+  assert.strictEqual(ads.decide({key:"s:0", at:0}, "s:1", 10000, MIN, false), "none");      // 가리기로 지워진 뒤 30초 안: 없음
+});
+
+// keep()용 가짜 host: innerHTML로 광고 하나가 붙고, push 횟수를 센다.
+function fakeHost(){
+  ads.reset();
+  global.document = {createElement: () => ({dataset:{}}), head: {appendChild: () => {}}};
+  global.adsbygoogle = [];
+  const host = {el:null,
+    set innerHTML(h){ this.el = h ? {dataset:{ad:"quiz"}, remove: () => { this.el = null; }} : null; },
+    querySelector(){ return this.el; },
+    querySelectorAll(sel){ return this.el && (sel === ".ad" || !("filled" in this.el.dataset)) ? [this.el] : []; }};
+  return host;
+}
+test("keep: 30초 안에 문제를 넘기면 같은 광고 요소를 그대로 두고 다시 요청하지 않는다", () => {
+  const cfg = sense({quiz:"1234567890"}), host = fakeHost();
+  assert.strictEqual(ads.keep(host, cfg, "quiz", on, "s:0", 0), "new");
+  const first = host.el;
+  assert.strictEqual(global.adsbygoogle.length, 1);
+  assert.strictEqual(ads.keep(host, cfg, "quiz", on, null, 3000), "reuse");      // 다음 문제(답 전)
+  assert.strictEqual(ads.keep(host, cfg, "quiz", on, "s:1", 8000), "reuse");     // 다음 해설, 30초 안
+  assert.strictEqual(host.el, first);
+  assert.strictEqual(global.adsbygoogle.length, 1);
+  assert.strictEqual(ads.keep(host, cfg, "quiz", on, "s:2", 31000), "new");      // 30초 지남
+  assert.notStrictEqual(host.el, first);
+  assert.strictEqual(global.adsbygoogle.length, 2);
+});
+test("keep: 가리기·업무모드면 지우고, 풀린 뒤 30초 안에는 다시 넣지 않는다", () => {
+  const cfg = sense({quiz:"1234567890"}), host = fakeHost();
+  ads.keep(host, cfg, "quiz", on, "s:0", 0);
+  assert.strictEqual(ads.sync(host, {work:false, cover:true}), 1);
+  assert.strictEqual(ads.keep(host, cfg, "quiz", on, "s:1", 10000), "none");
+  assert.strictEqual(host.el, null);
+  assert.strictEqual(ads.keep(host, cfg, "quiz", {work:true, cover:false}, "s:2", 60000), "none");
+  assert.strictEqual(global.adsbygoogle.length, 1);
+});
+test("fill: 같은 슬롯은 30초 안에 다시 요청하지 않는다(결과·공식·계산기 탭)", () => {
+  const cfg = sense({formulas:"1234567890"});
+  const a = fakeDom(["formulas"]);
+  assert.strictEqual(ads.fill(a.box, cfg, on, 0), 1);
+  const b = {box:null};
+  const els = [{dataset:{ad:"formulas"}, removed:false, remove(){ this.removed = true; }}];
+  b.box = {querySelectorAll: () => els.filter(e => !e.removed && !("filled" in e.dataset))};
+  assert.strictEqual(ads.fill(b.box, cfg, on, 20000), 0);
+  assert.ok(els[0].removed, "30초 안이면 자리를 지운다");
+  els.push({dataset:{ad:"formulas"}, removed:false, remove(){ this.removed = true; }});
+  assert.strictEqual(ads.fill(b.box, cfg, on, 30000), 1);
 });

@@ -12,6 +12,7 @@ window.SITE_CONFIG = {
   ADS: {
     provider: null,
     client: "",
+    minRefreshSec: 30,   // 같은 광고 자리를 다시 요청하기까지 최소 간격(초). 30 미만은 30으로 올린다
     slots: {
       quiz: "",       // 문제 화면, 답한 뒤 해설과 '다음 문제' 버튼 아래
       result: "",     // 결과 화면 맨 아래

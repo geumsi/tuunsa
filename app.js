@@ -69,6 +69,11 @@ const notesHtml = (q, order, picked) => !Array.isArray(q.choiceNotes) ? "" : `<d
 // 광고 슬롯(ads.js). 업무모드·화면 가리기 중에는 그리지 않는다.
 const adHtml = name => ADS ? ADS.html(CFG, name, {work:WORK, cover:COVER}) : "";
 const adFill = () => { if(ADS) ADS.fill($view, CFG, {work:WORK, cover:COVER}); };
+// 문제 화면 광고는 #view 밖 #adQuiz에 두어 화면을 다시 그려도 요소가 남는다.
+// 새 요청은 해설 화면에서 다른 문제로 넘어왔고 직전 요청 후 ADS.minRefreshSec이 지났을 때만. 그 전에는 붙어 있는 광고를 그대로 둔다.
+const $adQuiz = document.getElementById("adQuiz");
+const adQuiz = key => { if(ADS && $adQuiz) ADS.keep($adQuiz, CFG, "quiz", {work:WORK, cover:COVER}, key); };
+const adQuizOff = () => { if(ADS && $adQuiz) ADS.clear($adQuiz); };
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function shuffle(a){ a = a.slice(); for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function toast(msg){ const t = document.createElement("div"); t.className = "toast"; t.setAttribute("role","status"); t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 1800); }
@@ -124,6 +129,7 @@ function startMock(){
 
 /* ---------- home ---------- */
 function renderHome(){
+  adQuizOff();
   setTab("quiz");
   setTitle("");
   const total = Object.keys(Q).length;
@@ -263,8 +269,7 @@ function renderQuiz(){
       <button class="btn" id="prev" ${S.i ? "" : "disabled"} aria-label="이전 문제">이전</button>
       <button class="btn primary" id="next" ${done ? "" : "disabled"}>${last ? "결과 보기" : "다음 문제"}</button>
     </div>
-    <p class="kbd">키보드: 1~4로 답하고 Enter로 다음</p>
-    ${done ? adHtml("quiz") : ""}`;
+    <p class="kbd">키보드: 1~4로 답하고 Enter로 다음</p>`;
   $view.querySelectorAll("[data-ox]").forEach(b => b.onclick = () => answer(b.dataset.ox === "1"));
   $view.querySelectorAll("[data-c]").forEach(b => b.onclick = () => answer(+b.dataset.c));
   document.getElementById("next").onclick = next;
@@ -274,7 +279,7 @@ function renderQuiz(){
     S.items = S.items.slice(0, Math.max(...Object.keys(S.ans).map(Number)) + 1);
     S.i = S.items.length; save(K.sess, S); renderResult();
   };
-  adFill();
+  adQuiz(done ? `${S.startedAt}:${S.i}` : null);
   if(done){ const v = $view.querySelector(".verdict"); if(v && v.getBoundingClientRect().top > innerHeight - 140) v.scrollIntoView({behavior:"smooth", block:"start"}); }
   else window.scrollTo(0,0);
 }
@@ -299,6 +304,7 @@ function next(){
 /* ---------- result ---------- */
 function renderResult(){
   if(!S) return renderHome();
+  adQuizOff();
   setTitle(["결과","요약"]);
   const rows = S.items.map((it, i) => ({it, q:Q[it.qid], a:S.ans[i]})).filter(r => r.a !== undefined);
   const good = rows.filter(r => r.a === r.q.answer).length;
@@ -374,6 +380,7 @@ function startFromTab(fn){ history.replaceState(null, "", location.pathname + lo
 
 /* ---------- 공식 암기 ---------- */
 function renderFormulas(){
+  adQuizOff();
   setTab("formulas");
   setTitle(["공식 암기","용어집"]);
   const hide = !!OPTS.hideF;
@@ -450,6 +457,7 @@ function calcSvg(id){
   return `<svg class="calcsvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(m.name)} 키 배치 그림. 번호는 아래 설명과 짝을 이룹니다.">${g}</svg>`;
 }
 function renderCalcGuide(){
+  adQuizOff();
   setTab("calculator");
   setTitle(["계산기 사용법","참고자료"]);
   if(!GUIDE){ $view.innerHTML = `<p class="empty card">안내를 불러오지 못했습니다.</p>`; return; }
