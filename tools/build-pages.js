@@ -53,8 +53,7 @@ const PAGE_CSS = `.sp{padding:18px;margin:6px 0 14px}.sp h1{font-size:1.15rem;li
 // 업무모드면 data-work를 붙이고(색만 바뀜), 광고는 아래 슬롯 스크립트가 아예 그리지 않는다.
 const WORK_JS = `<script>try{if(JSON.parse(localStorage.getItem("tuunsa-work")))document.documentElement.setAttribute("data-work","")}catch(e){}</script>`;
 // 광고 슬롯 "page": config.js가 켜져 있고 업무모드가 아닐 때만 ads.js로 그린다. CSS로 숨기지 않는다.
-const adJs = up => `<script src="${up}config.js"></script>
-<script src="${up}ads.js"></script>
+const adJs = up => `<script src="${up}ads.js"></script>
 <script>(function(){var A=window.TuunsaAds,C=window.SITE_CONFIG,el=document.getElementById("adPage"),w=false;try{w=!!JSON.parse(localStorage.getItem("tuunsa-work"))}catch(e){}
 if(!A||!C||!el)return;var st={work:w,cover:false};el.innerHTML=A.html(C,"page",st);A.fill(el,C,st)})();</script>`;
 
@@ -65,6 +64,8 @@ function layout(cfg, {title, desc, canonical, up, body, jsonld, ad}){
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+${SITE.CSP_META}
+${SITE.FRAME_HEAD}
 ${WORK_JS}
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(desc)}">
@@ -87,6 +88,8 @@ ${jsonld ? `<script type="application/ld+json">${ld(jsonld)}</script>` : ""}
 ${body}
   <footer class="sitefoot">${SITE.footerHtml(cfg, up)}</footer>
 </div>
+<script src="${up}config.js"></script>
+<script src="${up}site.js"></script>
 ${ad ? adJs(up) + "\n" : ""}</body>
 </html>
 `;
@@ -169,7 +172,7 @@ function indexPage(ctx, areas){
     <h1>투자자산운용사 연습문제 모음 ${total}개</h1>
     ${SUBJECTS.slice().sort((a, b) => (a.n || 9) - (b.n || 9)).map(s => {
       const list = areas.filter(a => a.subject === s.n);
-      return list.length ? `<h2>${esc(s.name === "2026" ? s.full : `${s.name} ${s.full}`)}</h2><ul class="qlist">${list.map(a => `<li><a href="${a.id}/">${esc(a.title)}</a> <span class="muted small">${a.questions.length}문제</span></li>`).join("")}</ul>` : "";
+      return list.length ? `<h2>${esc(s.name === "2026" ? s.full : `${s.name} ${s.full}`)}</h2><ul class="qlist">${list.map(a => `<li><a href="${esc(a.id)}/">${esc(a.title)}</a> <span class="muted small">${a.questions.length}문제</span></li>`).join("")}</ul>` : "";
     }).join("")}
     <p><a class="btn primary block" href="${up}">사이트에서 풀어보기</a></p>
   </main>`;
@@ -182,8 +185,10 @@ function sitemap(urls){
 
 // 파일을 쓰지 않고 {상대경로: 내용}을 만든다. 테스트에서 그대로 쓴다.
 function build(areas, cfg, opt){
-  const ctx = {cfg, opt}, files = {}, urls = [cfg.SITE_URL];
+  // sitemap은 놓이는 폴더(q/) 아래 주소만 담는다(sitemaps.org). 사이트 루트는 루트 sitemap.xml에 있다.
+  const ctx = {cfg, opt}, files = {}, urls = [];
   const ids = new Set();
+  areas.forEach(a => { if(!/^[A-Za-z0-9_]+$/.test(a.id || "")) throw new Error("영역 id 형식 오류: " + a.id); });
   areas.forEach(a => a.questions.forEach(q => {
     if(ids.has(q.id)) throw new Error("문제 id 중복: " + q.id);
     if(!/^[A-Za-z0-9_]+$/.test(q.id)) throw new Error("문제 id 형식 오류: " + q.id);
@@ -204,6 +209,7 @@ function main(){
   let bytes = 0;
   Object.keys(files).forEach(rel => {
     const p = path.join(opt.out, rel);
+    if(!path.resolve(p).startsWith(path.resolve(opt.out) + path.sep)) throw new Error("출력 폴더 밖 경로: " + rel);
     fs.mkdirSync(path.dirname(p), {recursive:true});
     fs.writeFileSync(p, files[rel]);
     bytes += Buffer.byteLength(files[rel]);

@@ -83,3 +83,22 @@ test("--url: config.js의 SITE_URL만 바꾸고, 잘못된 주소는 거절", ()
   assert.throws(() => setUrl(src, "https://geumsi.com/tuunsa"));
   assert.throws(() => setUrl(src, 'https://x.com/"/'));
 });
+
+test("모든 정적 페이지와 허브에 CSP 메타와 iframe 방어가 들어간다", () => {
+  const out = outputs(loadConfig());
+  ["index.html", "privacy.html", "terms.html", "404.html", "tools/hub/index.html"].forEach(f => {
+    assert.ok(out[f].includes(SITE.CSP_META), f + " CSP");
+    assert.ok(out[f].includes("window.top!==window.self"), f + " 프레임 방어");
+  });
+  const ix = out["index.html"];
+  assert.ok(ix.indexOf('src="state.js"') > 0 && ix.indexOf('src="state.js"') < ix.indexOf('src="app.js"'));
+});
+test("감싸였는지 판단: 확인할 수 없으면 감싼 것으로 본다", () => {
+  const T = global.top, S = global.self;
+  try{
+    global.self = globalThis; global.top = {}; assert.strictEqual(SITE.framed(), true);
+    global.top = globalThis; assert.strictEqual(SITE.framed(), false);
+    Object.defineProperty(global, "top", {configurable:true, get(){ throw new Error("cross-origin"); }});
+    assert.strictEqual(SITE.framed(), true);
+  } finally { Object.defineProperty(global, "top", {configurable:true, writable:true, value:T}); global.self = S; }
+});

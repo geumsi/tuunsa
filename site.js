@@ -30,7 +30,21 @@ const caseNote = (c, cs, about) => {
   const d = validDate(cs && cs.checked) || validDate(c && c.CASES_CHECKED);
   return `공개 보도와 감독기관 발표를 요약한 내용입니다${d ? `(기준일 ${d})` : ""}. 이후 바뀐 내용이 있을 수 있습니다. 정정 요청: ${fixHtml(c, about || (cs && cs.title) || "", "메일 보내기")}`;
 };
-const api = {esc, name, brand, brandSub, fullName, owner, contact, contactHtml, footerHtml, caseNote, fixHtml, josa};
+// 다른 사이트가 iframe으로 감쌌는지. 확인할 수 없으면(교차 출처 예외) 감싼 것으로 본다.
+function framed(){ try{ return root.top !== undefined && root.top !== root.self; }catch(e){ return true; } }
+// 감싸였을 때 본문 대신 보여 줄 안내. 원 사이트로 가는 링크만 둔다.
+function frameNotice(c){
+  const url = c && /^https:\/\/[^\s"'<>]+$/.test(c.SITE_URL || "") ? c.SITE_URL : "";
+  root.document.body.innerHTML = `<div class="app framed-notice"><main class="card legal" style="margin-top:24px"><h1>${esc(name(c))}</h1>
+    <p>이 페이지는 다른 사이트 안에서는 열리지 않습니다.</p>
+    ${url ? `<p><a class="btn primary" href="${esc(url)}" target="_blank" rel="noopener">${esc(name(c))} 새 창에서 열기</a></p>` : ""}</main></div>`;
+}
+// CSP 메타(보안팀 security-gate.md L2 권장값). frame-ancestors는 meta에서 듣지 않아 넣지 않는다.
+const CSP_META = `<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'none'; form-action 'none'; upgrade-insecure-requests">`;
+// 정적 페이지 head용: 감싸였으면 그리기 전에 본문을 감추고(광고는 ads.js가 아예 그리지 않음), 다 읽히면 안내로 바꾼다.
+const FRAME_HEAD = `<script>(function(){var f;try{f=window.top!==window.self}catch(e){f=true}if(!f)return;document.documentElement.setAttribute("data-framed","");document.addEventListener("DOMContentLoaded",function(){if(window.TuunsaSite)window.TuunsaSite.frameNotice(window.SITE_CONFIG||{});else document.body.textContent="이 페이지는 다른 사이트 안에서는 열리지 않습니다."})})();</script>
+<style>[data-framed] body>*:not(.framed-notice){visibility:hidden}</style>`;
+const api = {framed, frameNotice, CSP_META, FRAME_HEAD, esc, name, brand, brandSub, fullName, owner, contact, contactHtml, footerHtml, caseNote, fixHtml, josa};
 root.TuunsaSite = api;
 if(typeof module === "object" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

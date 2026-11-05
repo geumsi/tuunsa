@@ -16,7 +16,8 @@ test("실제 데이터: 문제 수만큼 문제 페이지가 생긴다", () => {
   const nq = areas.reduce((n, a) => n + a.questions.length, 0);
   const pages = Object.keys(files).filter(f => /\/[^/]+\.html$/.test(f) && !f.endsWith("/index.html"));
   assert.strictEqual(pages.length, nq);
-  assert.strictEqual(files["sitemap.xml"].split("<url>").length - 1, 1 + 1 + areas.length + nq);
+  assert.strictEqual(files["sitemap.xml"].split("<url>").length - 1, 1 + areas.length + nq);
+  assert.ok(!files["sitemap.xml"].includes(`<loc>${loadConfig().SITE_URL}</loc>`), "q/ sitemap에 사이트 루트 주소를 넣지 않는다");
 });
 test("문제 글은 이스케이프되고 JSON-LD에 </script>가 그대로 들어가지 않는다", () => {
   const f = build(area([mc]), cfg, opt())["s1_tax/001.html"];
@@ -104,4 +105,12 @@ test("실제 데이터: 실명 사례 페이지 메타에 사례 제목 낱말�
     if(words.some(w => metas.includes(w))) bad.push(q.id);
   }));
   assert.deepStrictEqual(bad, []);
+});
+
+test("정적 페이지: CSP 메타, iframe 방어, 영역 id 검사", () => {
+  const f = build(area([mc]), cfg, opt())["s1_tax/001.html"];
+  assert.ok(f.includes(`content="object-src 'none'; base-uri 'none'; form-action 'none'; upgrade-insecure-requests"`));
+  assert.ok(f.includes("window.top!==window.self"));
+  assert.ok(f.indexOf('src="../../site.js"') > 0);
+  assert.throws(() => build([{id:"../x", subject:1, title:"t", questions:[]}], cfg, opt()), /영역 id/);
 });

@@ -58,6 +58,8 @@ function headHtml(cfg){
     "about":{"@type":"EducationalOccupationalCredential", "name":"투자자산운용사"}};
   if(SITE.brand(cfg)) ld.publisher = Object.assign({"@type":"Organization", "name":SITE.brand(cfg), "url":hubUrl(url)}, SITE.brandSub(cfg) ? {"description":SITE.brandSub(cfg)} : {});
   return `
+${SITE.CSP_META}
+${SITE.FRAME_HEAD}
 <meta name="apple-mobile-web-app-title" content="${esc(name)}">
 <title>${esc(full)}</title>
 <meta name="description" content="${esc(DESC)}">
@@ -91,6 +93,8 @@ function page(cfg, {file, title, body, up, noindex}){
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+${SITE.CSP_META}
+${SITE.FRAME_HEAD}
 <!-- tools/sync-site.js가 만든 파일. 직접 고치지 말고 템플릿이나 config.js를 고친다 -->
 <title>${esc(title)} · ${esc(SITE.fullName(cfg))}</title>
 ${noindex ? `<meta name="robots" content="noindex">\n` : `<link rel="canonical" href="${esc(cfg.SITE_URL + file)}">\n`}<link rel="icon" href="${up}img/icon.svg" type="image/svg+xml">
@@ -104,6 +108,8 @@ ${body}
   </main>
   <footer class="sitefoot">${SITE.footerHtml(cfg, up)}</footer>
 </div>
+<script src="${up}config.js"></script>
+<script src="${up}site.js"></script>
 </body>
 </html>
 `;
@@ -173,6 +179,8 @@ function hubOutputs(cfg){
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+${SITE.CSP_META}
+${SITE.FRAME_HEAD}
 <!-- tools/sync-site.js가 만든 허브 초안. 허브 저장소(jeongtai.github.io) 루트에 index.html로 복사한다. docs/HUB-SETUP.md -->
 <title>${esc(brand)}${sub ? ` | ${esc(sub)}` : ""}</title>
 <meta name="description" content="${esc(`${brand}${sub ? ` ${sub}` : ""}. 금융자격증 시험 대비 연습문제와 해설.`)}">
@@ -197,6 +205,8 @@ ${EXAMS.map(e => `      <li><a href="${esc(e.href)}"><b>${esc(e.name)}</b><span 
   </main>
   <footer class="sitefoot">${SITE.footerHtml(cfg, url)}</footer>
 </div>
+<script src="${esc(url)}config.js"></script>
+<script src="${esc(url)}site.js"></script>
 </body>
 </html>
 `;
