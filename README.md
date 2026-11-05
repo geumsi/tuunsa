@@ -50,6 +50,16 @@ data/calcguide.js 계산기 사용법 탭 내용 (계산기 그림 키 배치는
 
 문제를 추가하려면 해당 영역의 `data/*.js`에 항목을 넣으면 됩니다. 로컬에서 볼 때는 `index.html`을 브라우저로 열면 됩니다.
 
+```
+config.js    사이트 주소(SITE_URL), 광고(ADS), 분석(ANALYTICS), 문의(CONTACT) 설정
+ads.js       광고 슬롯. ADS.provider가 null이면 광고 코드를 그리지도 불러오지도 않음
+tools/build-pages.js    문제별 정적 HTML과 sitemap 생성 (node tools/build-pages.js --out 폴더)
+tools/sync-site-url.js  SITE_URL을 바꾼 뒤 index.html·robots.txt·sitemap.xml 등에 반영
+tests/       node --test tests/*.test.js
+```
+
+광고는 문제 화면(해설과 '다음 문제' 버튼 아래)과 결과 화면 맨 아래 두 곳에만 나오고, 업무모드와 화면 가리기 상태에서는 나오지 않습니다. `index.html#q=문제id`로 열면 그 문제부터 같은 영역을 이어서 풉니다.
+
 ## 주의
 
 세법과 규정은 바뀔 수 있습니다. 시험 직전에는 금융투자협회 자격시험센터 공지와 최신 기본서로 확인하세요.
