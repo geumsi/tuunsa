@@ -55,9 +55,16 @@ config.js    사이트 이름(SITE_NAME·BRAND), 주소(SITE_URL), 광고(ADS), 
 site.js      하단 고지·사례 기준일·정정 요청 문구 (앱과 tools 공용)
 ads.js       광고 슬롯. ADS.provider가 null이면 광고 코드를 그리지도 불러오지도 않음
 tools/build-pages.js    문제별 정적 HTML과 sitemap 생성 (node tools/build-pages.js --out 폴더)
-tools/sync-site.js      config.js를 고친 뒤 실행. index.html head, privacy·terms·404, manifest, robots, sitemap, ads.txt, og 이미지를 다시 만듦
-                        (--check 검사만, --png og.png 다시 뽑기, --cname 자체 도메인용 CNAME 생성)
+tools/sync-site.js      config.js를 고친 뒤 실행. index.html head, privacy·terms·404, manifest, robots, sitemap, ads.txt, og 이미지,
+                        tools/hub/(허브 저장소용 초안)를 다시 만듦 (--check 검사만, --png og.png 다시 뽑기,
+                        --url 주소 바꾸기, --cname tools/hub/CNAME 생성. 이 저장소 루트에는 CNAME을 만들지 않음)
 tests/       node --test tests/*.test.js
+```
+
+도메인(geumsi.com)을 허브 저장소에 연결하고 이 저장소 이름을 tuunsa로 바꾼 뒤 아래 한 줄을 실행하고, tools/hub/ 파일을 허브 저장소 루트로 복사합니다. 순서와 주의점은 docs/HUB-SETUP.md에 있습니다.
+
+```
+node tools/sync-site.js --url https://geumsi.com/tuunsa/ --cname && node tools/build-pages.js
 ```
 
 광고 자리는 문제 화면(답한 뒤 '다음 문제' 버튼 아래), 결과 화면 맨 아래, 공식 암기·계산기 사용법 탭 맨 아래, 정적 문제 페이지 하단이며 config.js 슬롯으로 하나씩 켜고 끕니다. 업무모드와 화면 가리기 중에는 광고를 DOM에서 지우고(CSS로 숨기지 않음), 가리기를 풀어도 다시 넣지 않고 다음 화면 전환 때만 그립니다. 같은 광고 자리는 직전 요청 후 `ADS.minRefreshSec`(기본·최소 30초)이 지나야 다시 요청하고, 문제 화면 광고는 그 전까지 붙어 있는 광고를 그대로 둡니다. `index.html#q=문제id`로 열면 그 문제부터 같은 영역을 이어서 풉니다.
