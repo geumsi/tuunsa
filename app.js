@@ -6,6 +6,8 @@ const D = window.QUIZ_DATA || {};
 const CALC = window.CALC_DATA || {questions:[], mockQuota:{}};
 const FORMULAS = window.FORMULA_DATA || [];
 const GUIDE = window.CALCGUIDE || null;
+const CFG = window.SITE_CONFIG || {};
+const ADS = window.TuunsaAds || null;
 // 계산 문제는 data/calc.js 한 곳에 모아 두고, 각 문항의 area 영역에 합친다.
 CALC.questions.forEach(q => { if(D[q.area] && !D[q.area].questions.some(x => x.id === q.id)) D[q.area].questions.push(q); });
 const SUBJECTS = [
@@ -62,6 +64,9 @@ const notesHtml = (q, order, picked) => !Array.isArray(q.choiceNotes) ? "" : `<d
   const row = (label, t) => t ? `<div class="crow"><b>${label}</b><div>${rich(t)}</div></div>` : "";
   return `<div class="cnote${isAns ? " ans" : ""}"><div class="chead"><span class="n">${k+1}</span><span class="ctext">${esc(q.choices[orig])}</span>${tag}</div>${row("용어", n.term)}${row("이론", n.theory)}${row("실무", n.practice)}</div>`;
 }).join("")}</div>`;
+// 광고 슬롯(ads.js). 업무모드·화면 가리기 중에는 그리지 않는다.
+const adHtml = name => ADS ? ADS.html(CFG, name, {work:WORK, cover:COVER}) : "";
+const adFill = () => { if(ADS) ADS.fill($view, CFG, {work:WORK, cover:COVER}); };
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function shuffle(a){ a = a.slice(); for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function toast(msg){ const t = document.createElement("div"); t.className = "toast"; t.setAttribute("role","status"); t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 1800); }
@@ -234,7 +239,8 @@ function renderQuiz(){
       <button class="btn" id="prev" ${S.i ? "" : "disabled"} aria-label="이전 문제">이전</button>
       <button class="btn primary" id="next" ${done ? "" : "disabled"}>${last ? "결과 보기" : "다음 문제"}</button>
     </div>
-    <p class="kbd">키보드: 1~4로 답하고 Enter로 다음</p>`;
+    <p class="kbd">키보드: 1~4로 답하고 Enter로 다음</p>
+    ${done ? adHtml("quiz") : ""}`;
   $view.querySelectorAll("[data-ox]").forEach(b => b.onclick = () => answer(b.dataset.ox === "1"));
   $view.querySelectorAll("[data-c]").forEach(b => b.onclick = () => answer(+b.dataset.c));
   document.getElementById("next").onclick = next;
@@ -244,6 +250,7 @@ function renderQuiz(){
     S.items = S.items.slice(0, Math.max(...Object.keys(S.ans).map(Number)) + 1);
     S.i = S.items.length; save(K.sess, S); renderResult();
   };
+  adFill();
   if(done){ const v = $view.querySelector(".verdict"); if(v && v.getBoundingClientRect().top > innerHeight - 140) v.scrollIntoView({behavior:"smooth", block:"start"}); }
   else window.scrollTo(0,0);
 }
@@ -310,10 +317,12 @@ function renderResult(){
       <details class="card witem"><summary>${esc(r.q.q)}</summary>
         <p class="small" style="margin:8px 0 0"><span style="color:var(--bad)">내 답 ${esc(ansLabel(r, r.a))}</span> · <span style="color:var(--good)">정답 ${esc(ansLabel(r, r.q.answer))}</span></p>
         <div class="explain">${rich(r.q.explain)}${memoHtml(r.q)}${calcHtml(r.q)}${practiceHtml(r.q)}${r.q.type === "mc" ? notesHtml(r.q, r.it.order, r.a) : ""}${r.q.ref ? `<div class="ref">${esc(D[r.q.area].title)} · ${esc(r.q.ref)}</div>` : ""}</div>
-      </details>`).join("")}</div>` : `<p class="empty card" style="margin-top:14px">모두 맞혔습니다.</p>`}`;
+      </details>`).join("")}</div>` : `<p class="empty card" style="margin-top:14px">모두 맞혔습니다.</p>`}
+    ${adHtml("result")}`;
   const ids = wrongRows.map(r => r.q.id);
   const rt = document.getElementById("retry"); if(rt) rt.onclick = () => start("wrong", "틀린 문제 다시 풀기", ids);
   document.getElementById("home").onclick = () => { S = null; localStorage.removeItem(K.sess); renderHome(); };
+  adFill();
   window.scrollTo(0,0);
 }
 
@@ -486,6 +495,7 @@ function applyWork(){
   const b = document.getElementById("workBtn");
   b.setAttribute("aria-pressed", WORK); b.title = WORK ? "업무모드 끄기" : "업무모드 켜기";
   document.getElementById("coverBtn").hidden = !WORK;
+  if(WORK && ADS) ADS.clear(document);
   setTitle(titleP);
 }
 const today = () => { const d = new Date(); return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`; };
@@ -507,6 +517,7 @@ function setCover(on){
   }
   if(c) c.hidden = !on;
   document.body.classList.toggle("covered", on);
+  if(on && ADS) ADS.clear(document);
   document.title = on ? "주간 시장 점검 메모" : realTitle;
   document.querySelector('link[rel="icon"]').href = on || WORK ? ICONS.doc : ICONS.quiz;
 }

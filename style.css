@@ -297,3 +297,9 @@ body.covered{overflow:hidden}
 .explain .case-tag{font-size:.72rem;font-weight:700;padding:1px 7px;border-radius:99px;background:var(--accent-soft);color:var(--accent)}
 .explain .case.ex .case-tag{background:var(--line);color:var(--muted)}
 .explain .case-src{display:inline-block;margin-top:6px;font-size:.78rem;color:var(--muted)}
+
+/* 광고 슬롯: ADS.provider가 켜졌을 때만 그려지므로 높이 예약도 그때만 생긴다. 답 버튼과 떨어뜨린다 */
+.ad{margin:32px 0 8px;text-align:center}
+.ad-label{display:block;font-size:.7rem;color:var(--muted);margin-bottom:4px}
+.ad-box{overflow:hidden}
+:root[data-work] .ad,body.covered .ad{display:none}
