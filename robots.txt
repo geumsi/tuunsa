@@ -1,0 +1,5 @@
+# 주의: github.io 하위 경로(/tuunsa-quiz/)에서는 크롤러가 이 파일을 읽지 않는다. 자체 도메인 연결 후부터 효력이 있다.
+User-agent: *
+Allow: /
+
+Sitemap: https://jeongtai.github.io/tuunsa-quiz/sitemap.xml
