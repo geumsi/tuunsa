@@ -54,10 +54,35 @@ function session(v, has, isMc){
     if(isMc(items[n].qid) ? !isInt(a, 0, 3) : typeof a !== "boolean") return null;
     ans[n] = a;
   }
-  return {mode:v.mode, title:v.title, items, i:v.i, ans, startedAt: Number.isFinite(v.startedAt) ? v.startedAt : 0};
+  const out = {mode:v.mode, title:v.title, items, i:v.i, ans, startedAt: Number.isFinite(v.startedAt) ? v.startedAt : 0};
+  if(isInt(v.total, items.length, 1000)) out.total = v.total;   // 중간에 그만둔 경우 원래 문항 수
+  return out;
 }
 const oneOf = (v, list, d) => list.indexOf(v) >= 0 ? v : d;
-const api = {stats, opts, mock, session, oneOf, own};
+
+// 여러 탭이 같은 기록을 쓸 때 합친다(새 객체를 돌려준다).
+// 문제별 기록은 더 최근(t가 큰) 것을 남긴다.
+function mergeStats(a, b){
+  const out = Object.assign({}, a);
+  Object.keys(b).forEach(id => { const x = out[id], y = b[id]; if(!x || (y.t || 0) > (x.t || 0)) out[id] = Object.assign({}, y); });
+  return out;
+}
+// 모의고사 이력: 회차와 문제별 출제 횟수 모두 큰 값
+function mergeMock(a, b){
+  const seen = Object.assign({}, a.seen);
+  Object.keys(b.seen).forEach(id => { seen[id] = Math.max(seen[id] || 0, b.seen[id]); });
+  return {runs: Math.max(a.runs, b.runs), seen};
+}
+// 쓰기 직전에 저장소 값을 다시 읽어 메모리 값과 합치고, fn으로 고친 뒤 쓴다. 다른 탭이 쓴 기록을 덮어쓰지 않는다.
+// read: 저장소 원값 → 검증된 값, merge(저장소, 메모리), fn(합친 값) → 고친 값. 돌려준 값을 메모리 값으로 쓴다.
+function update(store, key, read, merge, mem, fn){
+  let cur = mem;
+  try{ cur = merge(read(JSON.parse(store.getItem(key))), mem); }catch(e){}
+  const next = fn ? (fn(cur) || cur) : cur;
+  try{ store.setItem(key, JSON.stringify(next)); }catch(e){}
+  return next;
+}
+const api = {stats, opts, mock, session, oneOf, own, mergeStats, mergeMock, update};
 root.TuunsaState = api;
 if(typeof module === "object" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

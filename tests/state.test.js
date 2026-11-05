@@ -40,3 +40,50 @@ test("옵션은 boolean만, 테마는 목록 안의 값만", () => {
   assert.deepStrictEqual(V.opts({shuffleQ:"no", shuffleC:false, hideF:true, x:1}), {shuffleQ:true, shuffleC:false, hideF:true});
   assert.strictEqual(V.oneOf("<script>", ["system","light","dark"], "system"), "system");
 });
+
+// 두 탭 동시 사용(QA M2): 쓰기 직전에 다시 읽어 합치므로 기록을 잃지 않는다.
+function fakeStore(){ const m = {}; return {getItem: k => k in m ? m[k] : null, setItem: (k, v) => { m[k] = v; }, m}; }
+const ALL = id => /^s\d_\w+_\d{3}$/.test(id);
+const answer = (store, mem, id, ok, t) => V.update(store, "tuunsa-stats", v => V.stats(v, ALL), V.mergeStats, mem, all => {
+  const st = Object.assign({c:0, w:0}, all[id]); if(ok) st.c++; else st.w++; st.last = ok ? 1 : 0; st.t = t; all[id] = st;
+});
+test("두 탭이 번갈아 풀어도 6문제 기록이 모두 남는다", () => {
+  const store = fakeStore();
+  let A = {}, B = {};
+  A = answer(store, A, "s1_tax_001", true, 1);
+  B = answer(store, B, "s1_product_001", false, 2);
+  A = answer(store, A, "s1_tax_002", true, 3);
+  B = answer(store, B, "s1_product_002", true, 4);
+  A = answer(store, A, "s1_tax_003", false, 5);
+  B = answer(store, B, "s1_product_003", true, 6);
+  const saved = JSON.parse(store.m["tuunsa-stats"]);
+  assert.strictEqual(Object.keys(saved).length, 6);
+  assert.strictEqual(saved.s1_tax_003.w, 1);
+});
+test("같은 문제를 두 탭에서 풀면 횟수를 이어서 센다", () => {
+  const store = fakeStore();
+  let A = {}, B = {};
+  A = answer(store, A, "s1_tax_001", true, 1);
+  B = answer(store, B, "s1_tax_001", false, 2);
+  const saved = JSON.parse(store.m["tuunsa-stats"]).s1_tax_001;
+  assert.deepStrictEqual([saved.c, saved.w, saved.last], [1, 1, 0]);
+});
+test("모의고사 이력: 두 탭에서 한 번씩 시작하면 2회", () => {
+  const store = fakeStore();
+  const run = (mem, ids) => V.update(store, "tuunsa-mock", v => V.mock(v, ALL), V.mergeMock, mem, m => { ids.forEach(id => { m.seen[id] = (m.seen[id] || 0) + 1; }); m.runs++; });
+  let A = {runs:0, seen:{}}, B = {runs:0, seen:{}};
+  A = run(A, ["s1_tax_001"]);
+  B = run(B, ["s1_tax_002"]);
+  assert.deepStrictEqual(JSON.parse(store.m["tuunsa-mock"]), {runs:2, seen:{s1_tax_001:1, s1_tax_002:1}});
+});
+test("mergeStats는 더 최근 기록을 남기고 원본을 바꾸지 않는다", () => {
+  const a = {x:{c:1, w:0, last:1, t:5}}, b = {x:{c:0, w:1, last:0, t:3}, y:{c:1, w:0, last:1, t:1}};
+  const m = V.mergeStats(a, b);
+  assert.strictEqual(m.x.t, 5); assert.ok(m.y);
+  assert.strictEqual(Object.keys(a).length, 1);
+});
+test("중간에 그만둔 세션의 원래 문항 수(total)는 범위 안일 때만 남긴다", () => {
+  assert.strictEqual(V.session(Object.assign(clone(good), {i:2, total:100}), has, isMc).total, 100);
+  assert.strictEqual(V.session(Object.assign(clone(good), {i:2, total:1}), has, isMc).total, undefined);
+  assert.strictEqual(V.session(Object.assign(clone(good), {i:2, total:"<x>"}), has, isMc).total, undefined);
+});

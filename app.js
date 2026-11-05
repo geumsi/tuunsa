@@ -40,6 +40,7 @@ let STATS = V.stats(load(K.stats, {}), hasQ);
 let OPTS = V.opts(load(K.opts, {}));
 let MOCK = V.mock(load(K.mock, {}), hasQ);   // 모의고사 출제 이력: qid -> 출제 횟수
 let S = V.session(load(K.sess, null), hasQ, isMc);
+let onHome = false;   // 업무모드를 바꿀 때 첫 화면 문구를 다시 그리기 위해
 
 /* ---------- helpers ---------- */
 const $view = document.getElementById("view");
@@ -127,13 +128,17 @@ function startMock(){
     const rest = ranked.filter(r => !calc.includes(r)).slice(0, n - calc.length);
     shuffle(calc.concat(rest)).forEach(r => ids.push(r.q.id));
   });
-  ids.forEach(id => { MOCK.seen[id] = (MOCK.seen[id] || 0) + 1; });
-  MOCK.runs++; save(K.mock, MOCK);
+  // 다른 탭이 쓴 이력과 합친 뒤 더한다
+  MOCK = V.update(localStorage, K.mock, v => V.mock(v, hasQ), V.mergeMock, MOCK, m => {
+    ids.forEach(id => { m.seen[id] = (m.seen[id] || 0) + 1; });
+    m.runs++;
+  });
   start("mock", `실전 모의고사 ${MOCK.runs}회`, ids, true);
 }
 
 /* ---------- home ---------- */
 function renderHome(){
+  onHome = true;
   adQuizOff();
   setTab("quiz");
   setTitle("");
@@ -142,7 +147,9 @@ function renderHome(){
   const good = Object.keys(STATS).filter(id => Q[id] && STATS[id].last === 1).length;
   const wrong = wrongIds().length;
   const resume = S && S.i < S.items.length;
-  const fresh = !seen && !resume;
+  // 업무모드에서는 첫 화면 문구를 중립 어휘로 바꾼다(투운사·모의고사·시험·합격·문제·정답 등을 쓰지 않음). 문제 본문은 예외.
+  const T = (normal, work) => WORK ? work : normal;
+  const fresh = !seen && !resume && !WORK;
   const nForm = FORMULAS.reduce((n, g) => n + g.items.length, 0);
   // 기록이 없는 첫 방문자에게는 통계 대신 소개 카드를 보여 준다. 한 문제라도 풀면 통계 카드로 바뀐다.
   let h = fresh ? `<section class="card hero intro">
@@ -161,50 +168,51 @@ function renderHome(){
       <button class="chip" id="workInfo">업무모드</button>
     </div>
   </section>` : `<section class="card hero">
-    <h1 class="sr-only">투자자산운용사 문제와 해설</h1>
-    <p><b>과목을 고르고 문제를 풀면 바로 정답과 해설이 나옵니다.</b> <span class="muted small">진행 기록은 이 기기 브라우저에 저장됩니다.</span></p>
+    <h1 class="sr-only">${T("투자자산운용사 문제와 해설", "Weekly Brief")}</h1>
+    <p><b>${T("과목을 고르고 문제를 풀면 바로 정답과 해설이 나옵니다.", "분류를 고르면 항목별 검토 메모가 열립니다.")}</b> <span class="muted small">${T("진행 기록은 이 기기 브라우저에 저장됩니다.", "진행 기록은 이 기기에만 저장됩니다.")}</span></p>
     <div class="stats">
-      <div class="stat"><b>${total}</b><span>전체 문제</span></div>
-      <div class="stat"><b>${seen}</b><span>풀어본 문제</span></div>
-      <div class="stat"><b>${seen ? Math.round(good/seen*100) : 0}%</b><span>최근 정답률</span></div>
+      <div class="stat"><b>${total}</b><span>${T("전체 문제", "전체 항목")}</span></div>
+      <div class="stat"><b>${seen}</b><span>${T("풀어본 문제", "확인한 항목")}</span></div>
+      <div class="stat"><b>${seen ? Math.round(good/seen*100) : 0}%</b><span>${T("최근 정답률", "최근 일치율")}</span></div>
     </div>
-    ${resume ? `<button class="btn primary block" id="resume">이어서 풀기 · ${esc(S.title)} ${S.i+1}/${S.items.length}</button>` : ""}
-    <button class="btn ${resume ? "" : "primary"} block" id="mock">실전 모의고사 100문항 <span class="small" style="font-weight:500">· 실제 출제 비율</span></button>
-    <p class="muted small mockinfo">${MOCK.runs ? `모의고사 ${esc(MOCK.runs)}회 · 지금까지 출제된 문제 ${esc(mockSeenCount())} / ${esc(mockPool())}` : "풀 때마다 다른 문제가 나옵니다. 문제은행을 한 바퀴 다 돌 때까지 같은 문제는 다시 나오지 않습니다."}</p>
-    <button class="btn block" id="calc">계산 문제만 풀기 <span class="small" style="font-weight:500">· ${calcIds().length}문제, 계산기 꿀팁 포함</span></button>
-    ${wrong ? `<button class="btn block" id="wrong">오답노트 ${wrong}문제 다시 풀기</button>` : ""}
+    ${resume ? `<button class="btn primary block" id="resume">${T(`이어서 풀기 · ${esc(S.title)}`, "이어서 보기")} ${S.i+1}/${S.items.length}</button>` : ""}
+    <button class="btn ${resume ? "" : "primary"} block" id="mock">${T(`실전 모의고사 100문항 <span class="small" style="font-weight:500">· 실제 출제 비율</span>`, "종합 점검 100건")}</button>
+    <p class="muted small mockinfo">${MOCK.runs ? T(`모의고사 ${esc(MOCK.runs)}회 · 지금까지 출제된 문제 ${esc(mockSeenCount())} / ${esc(mockPool())}`, `종합 점검 ${esc(MOCK.runs)}회 · 확인 범위 ${esc(mockSeenCount())} / ${esc(mockPool())}`) : T("풀 때마다 다른 문제가 나옵니다. 문제은행을 한 바퀴 다 돌 때까지 같은 문제는 다시 나오지 않습니다.", "매번 다른 항목으로 구성됩니다.")}</p>
+    <button class="btn block" id="calc">${T(`계산 문제만 풀기 <span class="small" style="font-weight:500">· ${calcIds().length}문제, 계산기 꿀팁 포함</span>`, `계산 항목 ${calcIds().length}건`)}</button>
+    ${wrong ? `<button class="btn block" id="wrong">${T(`오답노트 ${wrong}문제 다시 풀기`, `재확인 ${wrong}건`)}</button>` : ""}
     <div class="opts">
-      <label><input type="checkbox" id="optQ" ${OPTS.shuffleQ ? "checked" : ""}> 문제 순서 섞기</label>
-      <label><input type="checkbox" id="optC" ${OPTS.shuffleC ? "checked" : ""}> 보기 순서 섞기</label>
+      <label><input type="checkbox" id="optQ" ${OPTS.shuffleQ ? "checked" : ""}> ${T("문제 순서 섞기", "항목 순서 섞기")}</label>
+      <label><input type="checkbox" id="optC" ${OPTS.shuffleC ? "checked" : ""}> ${T("보기 순서 섞기", "선택지 순서 섞기")}</label>
     </div>
   </section>
   <div class="links2">
-    <a class="card linkcard" href="#formulas"><b>공식 암기</b><span>외워야 할 공식 ${nForm}개를 영역별로, 가리고 외우기 가능</span></a>
-    <a class="card linkcard" href="#calculator"><b>계산기 사용법</b><span>일반·공학용 어떤 걸 쓸지, 키 누르는 법, 시험장 요령</span></a>
+    <a class="card linkcard" href="#formulas"><b>${T("공식 암기", "용어집")}</b><span>${T(`외워야 할 공식 ${nForm}개를 영역별로, 가리고 외우기 가능`, `공식 ${nForm}개 정리`)}</span></a>
+    <a class="card linkcard" href="#calculator"><b>${T("계산기 사용법", "참고자료")}</b><span>${T("일반·공학용 어떤 걸 쓸지, 키 누르는 법, 시험장 요령", "계산기 종류별 사용 정리")}</span></a>
   </div>`;
   SUBJECTS.slice().sort((a,b) => (a.n||9) - (b.n||9)).forEach(s => {
     const areas = AREAS.filter(a => D[a].subject === s.n);
     if(!areas.length) return;
     const qn = areas.reduce((n,a) => n + D[a].questions.length, 0);
+    const label = s.name === "2026" ? s.full : T(s.name, `분류 ${s.n}`);
     h += `<section class="subject" style="--c:${s.color}">
-      <div class="subject-head"><span class="dot"></span><h2>${esc(s.name === "2026" ? s.full : s.name)}</h2>
-        <span class="sub">${s.exam ? `시험 ${s.exam}문항 · ` : ""}문제 ${qn}개</span></div>
-      ${s.n ? `<p class="muted small" style="margin:-4px 0 10px">${esc(s.full)}</p>` : `<p class="muted small" style="margin:-4px 0 10px">세법 개정, 시험 일정·구성 등 정리노트 이후 바뀐 내용</p>`}
+      <div class="subject-head"><span class="dot"></span><h2>${esc(label)}</h2>
+        <span class="sub">${T(`${s.exam ? `시험 ${s.exam}문항 · ` : ""}문제 ${qn}개`, `${qn}건`)}</span></div>
+      ${s.n ? `<p class="muted small" style="margin:-4px 0 10px">${esc(s.full)}</p>` : `<p class="muted small" style="margin:-4px 0 10px">${T("세법 개정, 시험 일정·구성 등 정리노트 이후 바뀐 내용", "세법 개정 등 정리 이후 바뀐 내용")}</p>`}
       <div class="areas">${areas.map(a => {
         const st = areaStats(a), d = D[a];
         return `<button class="card area" data-area="${esc(a)}" style="--c:${s.color}">
           <span class="t">${esc(d.title)}</span>
-          <span class="m">${d.examCount ? `시험 ${d.examCount}문항 · ` : ""}문제 ${st.total}개 · 푼 문제 ${st.seen}${st.seen ? ` · 정답 ${st.good}` : ""}</span>
+          <span class="m">${T(`${d.examCount ? `시험 ${d.examCount}문항 · ` : ""}문제 ${st.total}개 · 푼 문제 ${st.seen}${st.seen ? ` · 정답 ${st.good}` : ""}`, `${st.total}건 · 확인 ${st.seen}${st.seen ? ` · 일치 ${st.good}` : ""}`)}</span>
           <span class="meter" aria-hidden="true"><i class="g" style="width:${st.good/st.total*100}%"></i><i class="b" style="width:${st.bad/st.total*100}%"></i></span>
         </button>`;
       }).join("")}</div>
-      ${areas.length > 1 ? `<button class="btn block subj-all" data-subj="${s.n}">${esc(s.name)} 전체 ${qn}문제 풀기</button>` : ""}
+      ${areas.length > 1 ? `<button class="btn block subj-all" data-subj="${esc(s.n)}">${T(`${esc(s.name)} 전체 ${qn}문제 풀기`, `${esc(label)} 전체 ${qn}건`)}</button>` : ""}
     </section>`;
   });
-  h += `<p class="foot">출처: 개인 정리노트 「금융 관련 내용 정리」를 바탕으로 문제화하고, 2026년 세법·시험 변경사항을 반영했습니다.
+  h += `<p class="foot">${T(`출처: 개인 정리노트 「금융 관련 내용 정리」를 바탕으로 문제화하고, 2026년 세법·시험 변경사항을 반영했습니다.
     시험 구성과 합격 기준(과목별 40% 이상, 전체 70% 이상)은 한국금융투자협회 공지를 기준으로 합니다.
-    최종 확인은 <a href="https://license.kofia.or.kr" target="_blank" rel="noopener">금융투자협회 자격시험센터</a>에서 하세요.<br>
-    <button class="linkbtn" id="reset">학습 기록 모두 지우기</button></p>`;
+    최종 확인은 <a href="https://license.kofia.or.kr" target="_blank" rel="noopener">금융투자협회 자격시험센터</a>에서 하세요.<br>`, "")}
+    <button class="linkbtn" id="reset">${T("학습 기록 모두 지우기", "기록 모두 지우기")}</button></p>`;
   $view.innerHTML = h;
   const on = (id, fn) => { const el = document.getElementById(id); if(el) el.onclick = fn; };
   on("resume", () => {
@@ -220,7 +228,7 @@ function renderHome(){
   $view.querySelectorAll("[data-subj]").forEach(b => b.onclick = () => startSubject(+b.dataset.subj));
   let armed = false;
   on("reset", e => {
-    if(!armed){ armed = true; e.target.textContent = "한 번 더 누르면 모든 기록이 지워집니다"; setTimeout(() => { armed = false; if(e.target.isConnected) e.target.textContent = "학습 기록 모두 지우기"; }, 3000); return; }
+    if(!armed){ armed = true; e.target.textContent = "한 번 더 누르면 모든 기록이 지워집니다"; setTimeout(() => { armed = false; if(e.target.isConnected) e.target.textContent = T("학습 기록 모두 지우기", "기록 모두 지우기"); }, 3000); return; }
     STATS = {}; S = null; MOCK = {runs:0, seen:{}}; save(K.stats, STATS); save(K.mock, MOCK); localStorage.removeItem(K.sess); toast("기록을 지웠습니다."); renderHome();
   });
   window.scrollTo(0,0);
@@ -229,6 +237,7 @@ function renderHome(){
 /* ---------- quiz ---------- */
 function renderQuiz(){
   if(!S) return renderHome();
+  onHome = false;
   setTab("quiz");
   if(S.i >= S.items.length) return renderResult();
   const it = S.items[S.i], q = Q[it.qid], d = D[q.area], color = areaColor(q.area);
@@ -281,6 +290,7 @@ function renderQuiz(){
   document.getElementById("prev").onclick = () => { if(S.i){ S.i--; save(K.sess, S); renderQuiz(); } };
   document.getElementById("quit").onclick = () => {
     if(!answered){ S = null; localStorage.removeItem(K.sess); renderHome(); return; }
+    S.total = S.total || S.items.length;   // 원래 문항 수. 모의고사 중간 채점 판정에 쓴다
     S.items = S.items.slice(0, Math.max(...Object.keys(S.ans).map(Number)) + 1);
     S.i = S.items.length; save(K.sess, S); renderResult();
   };
@@ -293,11 +303,14 @@ function answer(v){
   const q = Q[S.items[S.i].qid];
   S.ans[S.i] = v;
   const ok = v === q.answer;
-  const st = STATS[q.id] || {c:0, w:0};
-  if(ok) st.c++; else st.w++;
-  st.last = ok ? 1 : 0; st.t = Date.now();
-  STATS[q.id] = st;
-  save(K.stats, STATS); save(K.sess, S);
+  // 다른 탭이 쓴 기록과 합친 뒤 이 문제 기록만 고쳐 쓴다(두 탭에서 동시에 풀어도 기록을 잃지 않음)
+  STATS = V.update(localStorage, K.stats, v => V.stats(v, hasQ), V.mergeStats, STATS, all => {
+    const st = Object.assign({c:0, w:0}, all[q.id]);
+    if(ok) st.c++; else st.w++;
+    st.last = ok ? 1 : 0; st.t = Date.now();
+    all[q.id] = st;
+  });
+  save(K.sess, S);
   if(navigator.vibrate && !ok) try{ navigator.vibrate(60); }catch(e){}
   renderQuiz();
 }
@@ -309,6 +322,7 @@ function next(){
 /* ---------- result ---------- */
 function renderResult(){
   if(!S) return renderHome();
+  onHome = false;
   adQuizOff();
   setTitle(["결과","요약"]);
   const rows = S.items.map((it, i) => ({it, q:Q[it.qid], a:S.ans[i]})).filter(r => r.a !== undefined);
@@ -325,7 +339,7 @@ function renderResult(){
     });
     if(S.mode === "mock"){
       const fails = SUBJECTS.filter(s => s.n && bySubj[s.n] && bySubj[s.n].g / s.exam < .4);
-      const full = rows.length === S.items.length;
+      const full = rows.length === (S.total || S.items.length);
       const passed = full && good >= 70 && !fails.length;
       table = `<div>${full ? `<span class="pass ${passed ? "ok" : "no"}">${passed ? "합격 기준 통과" : "불합격"}</span>` : `<span class="pass no">중간 채점 · ${rows.length}문항만 풀었음</span>`}
         <p class="muted small" style="margin:8px 0 0">합격 기준: 과목별 40% 이상, 100문항 중 70문항 이상</p></div>
@@ -385,6 +399,7 @@ function startFromTab(fn){ history.replaceState(null, "", location.pathname + lo
 
 /* ---------- 공식 암기 ---------- */
 function renderFormulas(){
+  onHome = false;
   adQuizOff();
   setTab("formulas");
   setTitle(["공식 암기","용어집"]);
@@ -466,6 +481,7 @@ function calcSvg(id){
   return `<svg class="calcsvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(m.name)} 키 배치 그림. 번호는 아래 설명과 짝을 이룹니다.">${g}</svg>`;
 }
 function renderCalcGuide(){
+  onHome = false;
   adQuizOff();
   setTab("calculator");
   setTitle(["계산기 사용법","참고자료"]);
@@ -580,7 +596,7 @@ document.addEventListener("keydown", e => {
   const now = Date.now();
   if(now - lastEsc < 600){ lastEsc = 0; setCover(!COVER); } else lastEsc = now;
 });
-document.getElementById("workBtn").onclick = () => { WORK = !WORK; save(K.work, WORK); applyWork(); };
+document.getElementById("workBtn").onclick = () => { WORK = !WORK; save(K.work, WORK); applyWork(); if(onHome) renderHome(); };
 document.getElementById("coverBtn").onclick = () => setCover(true);
 applyWork();
 
@@ -593,6 +609,17 @@ document.addEventListener("keydown", e => {
   else if(!done && q.type === "mc" && /^[1-4]$/.test(k)){ e.preventDefault(); answer(S.items[S.i].order[+k - 1]); }
   else if(done && (k === "enter" || k === "arrowright")){ e.preventDefault(); next(); }
   else if(k === "arrowleft" && S.i){ S.i--; save(K.sess, S); renderQuiz(); }
+});
+
+// 다른 탭이 기록을 바꾸면 메모리 값과 합친다. 빈 값이면(기록 지우기) 이 탭도 비운다.
+const parse = t => { try{ return JSON.parse(t); }catch(e){ return null; } };
+window.addEventListener("storage", e => {
+  if(e.storageArea !== localStorage) return;
+  if(e.key === null){ STATS = {}; MOCK = {runs:0, seen:{}}; }
+  else if(e.key === K.stats){ const v = V.stats(parse(e.newValue), hasQ); STATS = Object.keys(v).length ? V.mergeStats(STATS, v) : {}; }
+  else if(e.key === K.mock){ const v = V.mock(parse(e.newValue), hasQ); MOCK = v.runs || Object.keys(v.seen).length ? V.mergeMock(MOCK, v) : {runs:0, seen:{}}; }
+  else return;
+  if(onHome) renderHome();
 });
 
 document.getElementById("homeBtn").onclick = () => { if(location.hash) history.replaceState(null, "", location.pathname + location.search); renderHome(); };
