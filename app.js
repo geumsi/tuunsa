@@ -171,6 +171,8 @@ function renderHome(){
   h += `<p class="foot">출처: 개인 정리노트 「금융 관련 내용 정리」를 바탕으로 문제화하고, 2026년 세법·시험 변경사항을 반영했습니다.
     시험 구성과 합격 기준(과목별 40% 이상, 전체 70% 이상)은 한국금융투자협회 공지를 기준으로 합니다.
     최종 확인은 <a href="https://license.kofia.or.kr" target="_blank" rel="noopener">금융투자협회 자격시험센터</a>에서 하세요.<br>
+    이 사이트는 개인이 만든 학습용 사이트이며 한국금융투자협회의 공식 자료가 아닙니다.<br>
+    <a href="privacy.html">개인정보처리방침</a> · <a href="terms.html">이용약관</a>${typeof CFG.CONTACT === "string" && CFG.CONTACT ? ` · 문의 ${esc(CFG.CONTACT)}` : ""}<br>
     <button class="linkbtn" id="reset">학습 기록 모두 지우기</button></p>`;
   $view.innerHTML = h;
   const on = (id, fn) => { const el = document.getElementById(id); if(el) el.onclick = fn; };
