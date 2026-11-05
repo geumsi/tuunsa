@@ -75,3 +75,33 @@ test("SITE_NAME을 바꾸면 페이지 이름도 바뀐다", () => {
   assert.ok(f.includes("| 새이름</title>"));
   assert.ok(!f.includes("투운사 모의고사"));
 });
+
+test("정적 페이지 광고 자리는 1개, 접힌 해설은 HTML 본문에 들어 있다", () => {
+  const f = build(area([mc]), cfg, opt())["s1_tax/001.html"];
+  assert.strictEqual(f.split('id="adPage"').length - 1, 1);
+  const d = f.slice(f.indexOf("<details>"), f.indexOf("</details>"));
+  assert.ok(d.includes("보기별") || d.includes("해설"));
+  assert.ok(d.includes("<li>항목</li>"), "해설 본문이 details 안에 정적 HTML로 있다");
+});
+test("실명 사례 페이지: 사례 제목 낱말이 문제 글에 있으면 메타를 영역명으로 만든다(사례 본문은 그대로)", () => {
+  const r2 = Object.assign({}, real, {q:"UBS의 CDO 손실과 관련된 설명은?", case:Object.assign({}, real.case, {title:"UBS 서브프라임 CDO 손실"})});
+  const f = build(area([mc, r2]), cfg, opt())["s1_tax/002.html"];
+  const head = f.slice(0, f.indexOf("</head>")).replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/, "");
+  const metas = (head.match(/<title>[^<]*<\/title>|content="[^"]*"/g) || []).join(" ");
+  assert.ok(!metas.includes("UBS"));
+  assert.ok(metas.includes("세제 연습문제 2번"));
+  assert.ok(f.includes("UBS 서브프라임 CDO 손실"), "사례 본문에는 그대로");
+});
+test("실제 데이터: 실명 사례 페이지 메타에 사례 제목 낱말이 없다", () => {
+  const areas = loadData(), files = build(areas, loadConfig(), opt());
+  const bad = [];
+  areas.forEach(a => a.questions.forEach(q => {
+    if(!(q.case && q.case.type === "real")) return;
+    const key = Object.keys(files).find(k => k.startsWith(a.id + "/") && files[k].includes(`#q=${q.id}"`));
+    const head = files[key].slice(0, files[key].indexOf("</head>")).replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/, "");
+    const metas = (head.match(/<title>[^<]*<\/title>|content="[^"]*"/g) || []).join(" ");
+    const words = String(q.case.title || "").split(/[\s·,()\[\]「」『』:\/<>"'-]+/).filter(t => t.length >= 2);
+    if(words.some(w => metas.includes(w))) bad.push(q.id);
+  }));
+  assert.deepStrictEqual(bad, []);
+});

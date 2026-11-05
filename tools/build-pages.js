@@ -104,7 +104,11 @@ function explainHtml(cfg, q, url){
   }).join("")}</div>` : "";
   return `<div class="explain"><p><b>정답 ${esc(ansText(q))}</b></p><h3>해설</h3>${rich(q.explain)}${memo}${c}${pr}${notes}${q.ref ? `<div class="ref">정리노트 · ${esc(q.ref)}</div>` : ""}</div>`;
 }
-// 해설 첫 문장. 실제 사례가 있는 문제는 검색 미리보기에 회사명이 뜨지 않게 문제 글만 쓴다(법률팀 R12).
+// 실명 사례가 있는 페이지는 title·description·og에 회사명을 넣지 않는다(법률팀 R12). 사례 본문은 그대로 둔다.
+// 회사명을 따로 표시한 데이터가 없으므로, 사례 제목의 낱말(2자 이상)이 문제 글에 하나라도 있으면 문제 글 대신 영역명으로 메타를 만든다.
+const caseWords = q => String(q.case && q.case.title || "").split(/[\s·,()\[\]「」『』:\/<>"'-]+/).filter(t => t.length >= 2);
+const metaSafeQ = q => !(q.case && q.case.type === "real") || !caseWords(q).some(t => q.q.includes(t));
+// 해설 첫 문장
 const firstSentence = t => String(t || "").split("\n")[0].split(/(?<=다\.)\s/)[0];
 
 // 위계(디자인팀 3장): 빵부스러기 > 비공식 안내 > 문제 > 접힌 정답·해설 > 이 영역 이어서 풀기 > 광고 > 같은 영역 다른 문제 > 이전·다음
@@ -112,9 +116,10 @@ function questionPage(ctx, area, q, i){
   const {cfg, opt} = ctx, site = cfg.SITE_URL, qs = area.questions, up = upOf(opt, 1);
   const url = `${site}${opt.base}${area.id}/${slug(area, q)}.html`;
   const prev = qs[i - 1], next = qs[i + 1];
-  const title = `${cut(q.q, 40)} · ${area.title} | ${SITE.name(cfg)}`;
-  const real = q.case && q.case.type === "real";
-  const desc = cut(opt.hideAnswer || real ? `투자자산운용사 ${area.title} 연습문제. ${q.q}` : firstSentence(q.explain) || q.q, 120);
+  const real = q.case && q.case.type === "real", safe = metaSafeQ(q);
+  const title = safe ? `${cut(q.q, 40)} · ${area.title} | ${SITE.name(cfg)}` : `${area.title} 연습문제 ${i + 1}번 | ${SITE.name(cfg)}`;
+  const desc = !safe ? `투자자산운용사 ${area.title} 연습문제 ${i + 1}번. 보기와 정답·해설.`
+    : cut(opt.hideAnswer || real ? `투자자산운용사 ${area.title} 연습문제. ${q.q}` : firstSentence(q.explain) || q.q, 120);
   const choices = q.type === "mc" ? `<ol class="ch">${q.choices.map(c => `<li><span>${esc(c)}</span></li>`).join("")}</ol>` : `<p class="muted small">O·X 문제: 맞으면 O, 틀리면 X</p>`;
   const answer = opt.hideAnswer ? "" : `<details><summary>정답과 해설 보기</summary>${explainHtml(cfg, q, url)}</details>`;
   // 같은 영역 다른 문제 5개: 이 문제 다음부터 차례로(끝이면 처음으로 돌아감)
@@ -207,5 +212,5 @@ function main(){
   console.log(`출력: ${opt.out}\nHTML ${html}개, sitemap URL ${files["sitemap.xml"].split("<url>").length - 1}개, 합계 ${(bytes / 1024 / 1024).toFixed(2)}MB`);
 }
 
-module.exports = {build, parseArgs, slug, esc};
+module.exports = {build, parseArgs, slug, esc, metaSafeQ};
 if(require.main === module) main();
