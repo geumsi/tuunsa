@@ -103,7 +103,7 @@ function explainHtml(cfg, q, url, extras, areaId){
     return `<div class="cnote${k === q.answer ? " ans" : ""}"><div class="chead"><span class="n">${k + 1}</span><span class="ctext">${esc(ch)}</span>${k === q.answer ? `<span class="ctag good">정답</span>` : ""}</div>${row("용어", n.term)}${row("이론", n.theory)}${row("실무", n.practice)}</div>`;
   }).join("")}</div>` : "";
   const head = R.conceptHtml(q, x.FIGURES, g);
-  return `<div class="explain"><p><b>정답 ${esc(ansText(q))}</b></p>${head}<h3>해설</h3>${rich(q.explain, g)}${memo}${c}${pr}${notes}${q.ref ? `<div class="ref">정리노트 · ${esc(q.ref)}</div>` : ""}</div>`;
+  return `<div class="explain"><p><b>정답 ${esc(ansText(q))}</b></p>${head}<h3>해설</h3>${rich(q.explain, g)}${memo}${c}${pr}${notes}${q.ref ? `<div class="ref">참고 단원 · ${esc(q.ref)}</div>` : ""}</div>`;
 }
 // 실명 사례가 있는 페이지는 title·description·og에 회사명을 넣지 않는다(법률팀 R12). 사례 본문은 그대로 둔다.
 // 회사명을 따로 표시한 데이터가 없으므로, 사례 제목의 낱말(2자 이상)이 문제 글에 하나라도 있으면 문제 글 대신 영역명으로 메타를 만든다.

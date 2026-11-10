@@ -201,7 +201,7 @@ function renderHome(){
     h += `<section class="subject" style="--c:${s.color}">
       <div class="subject-head"><span class="dot"></span><h2>${esc(label)}</h2>
         <span class="sub">${T(`${s.exam ? `시험 ${s.exam}문항 · ` : ""}문제 ${qn}개`, `${qn}건`)}</span></div>
-      ${s.n ? `<p class="muted small" style="margin:-4px 0 10px">${esc(s.full)}</p>` : `<p class="muted small" style="margin:-4px 0 10px">${T("세법 개정, 시험 일정·구성 등 정리노트 이후 바뀐 내용", "세법 개정 등 정리 이후 바뀐 내용")}</p>`}
+      ${s.n ? `<p class="muted small" style="margin:-4px 0 10px">${esc(s.full)}</p>` : `<p class="muted small" style="margin:-4px 0 10px">${T("세법 개정, 시험 일정·구성 등 2026년에 바뀐 내용", "세법 개정 등 정리 이후 바뀐 내용")}</p>`}
       <div class="areas">${areas.map(a => {
         const st = areaStats(a), d = D[a];
         return `<button class="card area" data-area="${esc(a)}" style="--c:${s.color}">
@@ -213,7 +213,7 @@ function renderHome(){
       ${areas.length > 1 ? `<button class="btn block subj-all" data-subj="${esc(s.n)}">${T(`${esc(s.name)} 전체 ${qn}문제 풀기`, `${esc(label)} 전체 ${qn}건`)}</button>` : ""}
     </section>`;
   });
-  h += `<p class="foot">${T(`출처: 개인 정리노트 「금융 관련 내용 정리」를 바탕으로 문제화하고, 2026년 세법·시험 변경사항을 반영했습니다.
+  h += `<p class="foot">${T(`출처: 공개된 법령·규정과 일반 금융 지식을 바탕으로 직접 작성한 연습문제이며, 실제 기출문제가 아닙니다. 2026년 세법·시험 변경사항을 반영했습니다.
     시험 구성과 합격 기준(과목별 40% 이상, 전체 70% 이상)은 한국금융투자협회 공지를 기준으로 합니다.
     최종 확인은 <a href="https://license.kofia.or.kr" target="_blank" rel="noopener">금융투자협회 자격시험센터</a>에서 하세요.<br>`, "")}
     <button class="linkbtn" id="reset">${T("학습 기록 모두 지우기", "기록 모두 지우기")}</button></p>`;
@@ -271,7 +271,7 @@ function renderQuiz(){
         <span class="mark" aria-hidden="true">${correct ? "O" : passed ? "?" : "X"}</span><span>${correct ? "정답" : passed ? "패스" : "오답"}</span>
         <span class="ans">${esc(ansText)}</span></div>
       ${correct ? `<label class="guess"><input type="checkbox" id="guess" ${S.guess && S.guess[S.i] ? "checked" : ""}> 찍어서 맞았어요, 오답노트에 넣기</label>` : ""}
-      <div class="explain">${explainBody(q, it.order, picked, true, "정리노트")}</div>`;
+      <div class="explain">${explainBody(q, it.order, picked, true, "참고 단원")}</div>`;
   }
   const last = S.i + 1 === S.items.length;
   const answered = Object.keys(S.ans).length;
