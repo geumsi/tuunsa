@@ -125,6 +125,7 @@ window.GLOSSARY = {
   "DV01": {full: "Dollar Value of 01", ko: "금리 1bp 변동 시 가격 변화"},
   "KTS": {full: "", ko: "국채전문유통시장"},
   "PPD": {full: "", ko: "예비국고채전문딜러"},
+  "PD": {byArea: {s2_risk: {full: "Probability of Default", ko: "부도확률"}, s3_bond: {full: "Primary Dealer", ko: "국고채전문딜러"}}},
   "DVP": {full: "Delivery Versus Payment", ko: "동시결제(증권·대금 동시 결제)"},
   "WGBI": {full: "World Government Bond Index", ko: "세계국채지수(FTSE 산출)"},
   "T-Bill": {full: "Treasury Bill", ko: "미국 단기국채(만기 1년 이하)"},
