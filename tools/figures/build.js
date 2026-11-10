@@ -958,6 +958,296 @@ F["perf-style-box"] = (function () {
   return {title, caption: "가로는 가치·성장 스타일, 세로는 기업 규모로 9칸을 나눠 펀드가 어떤 주식에 주로 투자하는지 보여 준다. 예시 칸은 대형 가치주 펀드다.", svg: svg(340, 282, title, s)};
 })();
 
+// ---------- 추가 그림(개념 작성 팀 요청) ----------
+// 세목 카드: 머리 + 줄 목록
+function card(x, y, w, head, lines, c) {
+  const h = 28 + lines.length * 18;
+  let s = `<rect x="${n(x)}" y="${n(y)}" width="${n(w)}" height="${n(h)}" rx="8"${cl(c)}${tint(0.08)}/>`;
+  s += text(x + 8, y + 19, head, {c, b: 1, nh: 1});
+  lines.forEach((t, i) => { s += text(x + 8, y + 38 + i * 18, t, {nh: 1}); });
+  return {s, h};
+}
+F["tax-classification-tree"] = (function () {
+  const title = "국세와 지방세 세목 분류";
+  let s = box(120, 4, 100, 30, ["조세"], "k-fg", {op: 0.06});
+  s += poly([[170, 34], [170, 44], [86, 44], [86, 52]], "k-ln") + poly([[170, 44], [254, 44], [254, 52]], "k-ln");
+  s += box(4, 52, 164, 30, ["국세"], "k-ac", {op: 0.16}) + box(172, 52, 164, 30, ["지방세"], "k-ok", {op: 0.16});
+  const L = [["직접세(5)", ["소득세·법인세·상속세", "증여세·종합부동산세"]], ["간접세(5)", ["부가가치세·주세·인지세", "증권거래세·개별소비세"]], ["목적세(3)", ["교육세·농어촌특별세", "교통·에너지·환경세"]], ["관세", []]];
+  const R = [["도세 보통세(4)", ["취득세·등록면허세", "레저세·지방소비세"]], ["도세 목적세(2)", ["지역자원시설세", "지방교육세"]], ["시·군세 보통세(5)", ["주민세·재산세·자동차세", "지방소득세·담배소비세"]]];
+  let y = 90;
+  L.forEach(g => { const r = card(4, y, 164, g[0], g[1], "k-ac"); s += r.s; y += r.h + 6; });
+  const H = y;
+  y = 90;
+  R.forEach(g => { const r = card(172, y, 164, g[0], g[1], "k-ok"); s += r.s; y += r.h + 6; });
+  s += text(176, y + 16, "교육세 = 국세 목적세", {c: "k-mu"}) + text(176, y + 34, "지방교육세 = 도세 목적세", {c: "k-mu"});
+  return {title, caption: "국세는 직접세 5개, 간접세 5개, 목적세 3개와 관세로, 지방세는 도세(보통세 4개, 목적세 2개)와 시·군세 보통세 5개로 나뉜다. 이름에 '지방'이 붙어도 지방소득세는 시·군세, 지방소비세는 도세다.", svg: svg(340, Math.max(H, y + 40) + 2, title, s)};
+})();
+
+F["tax-appeal-flow"] = (function () {
+  const title = "조세불복 절차";
+  let s = "";
+  s += box(110, 4, 120, 36, ["과세처분"], "k-fg", {op: 0.06});
+  s += box(90, 64, 160, 50, ["이의신청", "관할청 · 선택"], "k-mu", {op: 0.08});
+  s += `<rect x="90" y="64" width="160" height="50" rx="8" class="k-mu"${DASH}/>`;
+  s += arrow(170, 40, 170, 62, "k-fg") + text(178, 56, "90일", {c: "k-mu"});
+  s += box(4, 150, 150, 50, ["심사청구", "국세청 · 감사원"], "k-ac");
+  s += box(186, 150, 150, 50, ["심판청구", "조세심판원"], "k-ac");
+  s += arrow(140, 114, 90, 148, "k-fg") + arrow(200, 114, 250, 148, "k-fg");
+  s += text(170, 140, "90일", {a: "m", c: "k-mu"});
+  // 이의신청 생략 경로
+  s += poly([[110, 22], [20, 22], [20, 148]], "k-mu", DASH) + head(20, 148, Math.PI / 2, "k-mu");
+  s += poly([[230, 22], [320, 22], [320, 148]], "k-mu", DASH) + head(320, 148, Math.PI / 2, "k-mu");
+  s += text(26, 60, "생략 가능", {c: "k-mu"});
+  s += text(170, 220, "둘 중 하나를 고른다", {a: "m", c: "k-ac", b: 1});
+  s += box(110, 250, 120, 36, ["행정소송"], "k-bd");
+  s += arrow(80, 200, 140, 248, "k-fg") + arrow(260, 200, 200, 248, "k-fg");
+  s += text(52, 236, "90일", {c: "k-mu"}) + text(288, 236, "90일", {a: "e", c: "k-mu"});
+  s += text(170, 310, "각 단계는 90일 이내에 제기한다", {a: "m", c: "k-mu"});
+  return {title, caption: "이의신청은 관할청에 내는 선택 절차라 건너뛸 수 있다. 행정소송을 하려면 심사청구(국세청·감사원)나 심판청구(조세심판원) 중 하나를 반드시 거쳐야 하고, 각 단계는 90일 이내에 제기한다.", svg: svg(340, 320, title, s)};
+})();
+
+F["tax-fin-income-threshold"] = (function () {
+  const title = "금융소득 2,000만원 기준선과 배당가산";
+  const x0 = 12, k = 300 / 4400, X = v => x0 + v * k; // 만원 단위
+  let s = text(4, 20, "기준선 채우는 순서", {c: "k-mu"}) + text(4, 38, "이자 → 가산 대상 아닌 배당 → 가산 대상 배당", {c: "k-mu"});
+  [["k-ac", 0.25, "이자"], ["k-ok", 0.25, "배당"], ["k-bd", 0.5, "배당가산"]].forEach((g, i) => { s += rect(120 + i * 62, 50, 12, 12, g[0], tint(g[1]) + ' stroke="none"') + text(136 + i * 62, 61, g[2], {c: "k-mu"}); });
+  const tx = X(2000);
+  // 예 1 (s1_tax_c01)
+  s += text(x0, 102, "예 1: 이자 1,000 + 가산 대상 배당 3,000", {b: 1});
+  const y1 = 110, h = 40;
+  s += rect(X(0), y1, 1000 * k, h, "k-ac", tint(0.25) + ' stroke="none"');
+  s += rect(X(1000), y1, 1000 * k, h, "k-ok", tint(0.18) + ' stroke="none"');
+  s += rect(X(2000), y1, 2000 * k, h, "k-ok", tint(0.35) + ' stroke="none"');
+  s += rect(X(4000), y1, 200 * k, h, "k-bd", tint(0.5) + ' stroke="none"');
+  s += text(X(500), y1 + 25, "이자 1,000", {a: "m", nh: 1});
+  s += text(X(1500), y1 + 25, "배당 1,000", {a: "m", nh: 1});
+  s += text(X(3000), y1 + 25, "배당 2,000", {a: "m", nh: 1});
+  s += line(X(4100), y1 + h, X(4100), y1 + h + 12, "k-bd") + text(X(4200), y1 + h + 28, "배당가산 200 (2,000 × 10%)", {a: "e", c: "k-bd", b: 1});
+  s += text(X(4200), y1 + h + 48, "금융소득금액 4,200 → 종합과세", {a: "e", b: 1});
+  // 예 2 (s1_tax_c02)
+  const y2 = 232;
+  s += text(x0, y2 - 10, "예 2: 이자 800 + 배당 700", {b: 1});
+  s += rect(X(0), y2, 800 * k, h, "k-ac", tint(0.25) + ' stroke="none"');
+  s += rect(X(800), y2, 700 * k, h, "k-ok", tint(0.18) + ' stroke="none"');
+  s += text(X(400), y2 + 25, "800", {a: "m", nh: 1}) + text(X(1150), y2 + 25, "700", {a: "m", nh: 1});
+  s += text(X(1500) + 6, y2 + h + 22, "1,500 ≤ 2,000 → 분리과세", {b: 1});
+  s += text(X(1500) + 6, y2 + h + 42, "15.4% 원천징수로 끝 (231)", {c: "k-mu"});
+  // 기준선
+  s += line(tx, y1 - 3, tx, y1 + h + 8, "k-bd", sw(2.5) + DASH) + line(tx, y2 - 3, tx, y2 + h + 8, "k-bd", sw(2.5) + DASH);
+  s += text(tx, 84, "기준 2,000만원", {a: "m", c: "k-bd", b: 1});
+  s += text(336, 20, "단위: 만원", {a: "e", c: "k-mu"});
+  return {title, caption: "2,000만원 기준선을 이자부터 채우고, 기준선을 넘는 가산 대상 배당에만 10%를 더한다(예 1: 4,000 + 200 = 4,200만원). 합계가 2,000만원 이하면 15.4% 원천징수로 끝난다(예 2).", svg: svg(340, 322, title, s)};
+})();
+
+F["mbs-level-payment"] = (function () {
+  const title = "원리금균등상환의 원금·이자 구성";
+  const Lo = 100, r = 0.06, N = 15, A = Lo * r / (1 - Math.pow(1 + r, -N));
+  const P = plane({L: 40, R: 318, T: 56, B: 196, x0: 0, x1: N, y0: 0, y1: A * 1.15});
+  let s = axes(P, "회차", "상환액");
+  let bal = Lo;
+  const bw = (P.R - P.L) / N * 0.7;
+  for (let i = 0; i < N; i++) {
+    const it = bal * r, pr = A - it; bal -= pr;
+    const x = P.sx(i + 0.15);
+    s += rect(x, P.sy(pr), bw, P.B - P.sy(pr), "k-ac", tint(0.75) + ' stroke="none"');
+    s += rect(x, P.sy(A), bw, P.sy(pr) - P.sy(A), "k-wn", tint(0.4) + ' stroke="none"');
+  }
+  s += line(P.L, P.sy(A), P.R, P.sy(A), "k-fg", DASH);
+  s += text(P.L - 6, P.sy(A) + 5, "A", {a: "e", b: 1});
+  [1, 5, 10].forEach(v => { s += text(P.sx(v - 0.5), P.B + 18, String(v), {a: "m", c: "k-mu"}); });
+  s += rect(40, 14, 14, 12, "k-ac", tint(0.75) + ' stroke="none"') + text(60, 25, "원금(점점 늘어남)", {c: "k-ac", b: 1});
+  s += rect(190, 14, 14, 12, "k-wn", tint(0.4) + ' stroke="none"') + text(210, 25, "이자(점점 줄어듦)", {c: "k-wn", b: 1});
+  return {title, caption: "매회 상환액(A)은 같지만 남은 원금이 줄어드는 만큼 이자가 줄고 그만큼 원금 상환이 늘어난다(대출 100, 연 6%, 15회 가정).", svg: svg(340, 226, title, s)};
+})();
+
+F["mbs-securitization-types"] = (function () {
+  const title = "MBS 증권화 3방식";
+  let s = "";
+  const rows = [
+    ["Pass-Through(지분형)", "투자자", "부외효과 있음(장부 밖)", "pass"],
+    ["Pay-Through(혼합형)", "투자자 또는 발행자(트랜치별)", "", "pay"],
+    ["MBB(채권형)", "발행자", "부외효과 없음(장부에 남음)", "mbb"]
+  ];
+  rows.forEach((r, i) => {
+    const y = 8 + i * 106;
+    s += text(4, y + 14, r[0], {b: 1});
+    s += box(4, y + 24, 86, 40, ["주택저당대출"], "k-mu", {op: 0.08, bold: false});
+    s += box(250, y + 24, 86, 40, ["투자자"], "k-ac", {bold: false});
+    if (r[3] === "pass") {
+      s += `<rect x="118" y="${y + 16}" width="104" height="56" rx="8" class="k-mu"${DASH}/>` + text(170, y + 34, "발행자(통과)", {a: "m", c: "k-mu", nh: 1});
+      s += arrow(92, y + 44, 248, y + 44, "k-ac", sw(2));
+    } else if (r[3] === "pay") {
+      s += box(118, y + 24, 70, 40, ["발행자"], "k-wn", {bold: false});
+      s += arrow(92, y + 44, 116, y + 44, "k-fg");
+      [0, 1, 2].forEach(j => { s += box(204, y + 20 + j * 16, 28, 14, [], "k-ok", {op: 0.15 + j * 0.15}); });
+      s += text(218, y + 14, "트랜치", {a: "m", c: "k-ok"});
+      s += arrow(190, y + 44, 202, y + 44, "k-fg") + arrow(234, y + 44, 248, y + 44, "k-fg");
+    } else {
+      s += `<rect x="96" y="${y + 18}" width="128" height="52" rx="8" class="k-wn"${tint(0.08)}/>`;
+      s += text(160, y + 36, "발행자 장부", {a: "m", c: "k-wn", b: 1, nh: 1});
+      s += text(160, y + 56, "대출 보유", {a: "m", nh: 1});
+      s += arrow(226, y + 44, 248, y + 44, "k-fg", sw(2));
+    }
+    s += text(4, y + 84, "위험: " + r[1], {c: "k-bd"});
+    if (r[2]) s += text(336, y + 84, r[2], {a: "e", c: "k-mu"});
+  });
+  s += text(4, 330, "MBB 투자자는 발행자에 원리금 상환청구권을 가진다", {c: "k-mu"});
+  return {title, caption: "Pass-Through는 대출 원리금을 투자자에게 그대로 넘겨 위험이 투자자에게 가고 자산이 장부에서 빠진다. Pay-Through는 트랜치로 나눠 위험을 나누고, MBB는 발행자가 자산을 장부에 두고 위험을 진다.", svg: svg(340, 338, title, s)};
+})();
+
+F["alt-cdo-tranche"] = (function () {
+  const title = "CDO 트랜치와 손실 흡수 순서";
+  const tr = [["에퀴티", 40, "k-bd", "하이리스크·하이리턴"], ["메자닌", 50, "k-wn", "시니어와 에퀴티 사이"], ["시니어", 64, "k-ac", "로우리스크·로우리턴"], ["수퍼시니어", 54, "k-ok", "최상위, 신용평가 안 함"]];
+  let s = "", y = 252;
+  const x = 52, w = 104;
+  tr.forEach(t => {
+    y -= t[1];
+    s += box(x, y, w, t[1] - 2, [t[0]], t[2], {op: 0.2});
+    s += text(x + w + 10, t[0] === "메자닌" ? y + 18 : y + t[1] / 2 + 5, t[3], {c: "k-mu"});
+  });
+  // 손실이 아래부터 차오름 예시
+  s += `<rect x="${x}" y="204" width="${w}" height="48" class="k-bd" fill="currentColor" fill-opacity=".18" stroke="none"/>`;
+  s += line(x - 4, 204, x + w + 4, 204, "k-bd", sw(2) + DASH);
+  s += arrow(30, 250, 30, 36, "k-bd", sw(2));
+  s += text(16, 24, "손실은 아래부터", {c: "k-bd", b: 1});
+  s += text(x + w + 10, 209, "← 손실이 여기까지 찬 예", {c: "k-bd", b: 1});
+  s += text(4, 278, "아래 계층일수록 위험과 수익이 크다", {b: 1});
+  return {title, caption: "기초자산에서 손실이 나면 에퀴티부터 메자닌, 시니어, 수퍼시니어 순서로 떠안는다. 먼저 손실을 떠안는 아래 계층일수록 위험이 크고 그 대가로 수익도 크다.", svg: svg(340, 288, title, s)};
+})();
+
+F["re-appraisal-3"] = (function () {
+  const title = "감정평가 3방식";
+  let s = "";
+  const cols = [[4, 84, "방식"], [110, 120, "방법"], [256, 80, "가격"]];
+  cols.forEach(c => { s += text(c[0] + c[1] / 2, 20, c[2], {a: "m", c: "k-mu", b: 1}); });
+  const rows = [["비교방식", ["거래사례비교법"], ["비준가격"], "시장성 반영 · 토지 평가에 적합"], ["원가방식", ["원가법"], ["복성가격", "(적산가격)"], "비시장성·비수익성 부동산, 토지 X"], ["수익방식", ["수익환원법"], ["수익가격"], "수익성 부동산에 적합"]];
+  rows.forEach((r, i) => {
+    const y = 32 + i * 84, h = 46;
+    s += box(4, y, 84, h, [r[0]], "k-fg", {op: 0.06});
+    s += box(110, y, 120, h, r[1], "k-ac", {bold: false});
+    s += box(256, y, 80, h, r[2], "k-ok", {bold: r[2].length > 1 ? true : false});
+    s += arrow(90, y + h / 2, 108, y + h / 2, "k-fg") + arrow(232, y + h / 2, 254, y + h / 2, "k-fg");
+    s += text(4, y + h + 20, r[3], {c: "k-mu"});
+  });
+  return {title, caption: "비교방식은 거래사례비교법으로 비준가격, 원가방식은 원가법으로 복성가격(적산가격), 수익방식은 수익환원법으로 수익가격을 구한다. 원가법은 다시 만들 수 없는 일반 토지에는 쓰지 않는다.", svg: svg(340, 286, title, s)};
+})();
+
+F["ta-patterns-continuation"] = (function () {
+  const title = "지속형 패턴과 확대형";
+  // 경계선 up(t), lo(t) 사이를 오가는 지그재그. pre: 앞 추세, post: 돌파 방향
+  function pat(ox, oy, name, up, lo, k, pre, post, cls) {
+    const W = 104, H = 62, X = t => ox + 8 + t * (W - 16), Y = v => oy + 20 + (1 - v) * (H - 24);
+    let pts0 = [];
+    const t0 = pre ? 0.25 : 0, t1 = 0.82;
+    if (pre) pts0.push([X(0), Y(pre)]);
+    for (let i = 0; i <= k; i++) { const t = t0 + (t1 - t0) * i / k; pts0.push([X(t), Y(i % 2 ? up(t) : lo(t))]); }
+    pts0.push([X(1), Y(post)]);
+    let s = `<rect x="${ox}" y="${oy}" width="${W}" height="${H + 22}" rx="8"${cl(cls)}${tint(0.06)}/>`;
+    if (name !== "다이아몬드형") s += poly([[X(t0), Y(up(t0))], [X(t1), Y(up(t1))]], "k-mu", DASH) + poly([[X(t0), Y(lo(t0))], [X(t1), Y(lo(t1))]], "k-mu", DASH);
+    else s += poly([[X(t0), Y(0.5)], [X(0.53), Y(up(0.53))], [X(t1), Y(0.5)], [X(0.53), Y(lo(0.53))], [X(t0), Y(0.5)]], "k-mu", DASH);
+    s += poly(pts0, cls, sw(2));
+    s += text(ox + W / 2, oy + H + 14, name, {a: "m", b: 1, nh: 1});
+    return s;
+  }
+  const lin = (a, b) => t => a + (b - a) * (t - 0) / 1;
+  let s = text(4, 18, "지속형: 패턴이 끝나면 원래 추세가 이어진다", {c: "k-ok", b: 1});
+  const r1 = 28, r2 = 122, gx = [4, 118, 232];
+  s += pat(gx[0], r1, "삼각형", lin(0.85, 0.5), lin(0.15, 0.45), 5, 0, 0.95, "k-ok");
+  s += pat(gx[1], r1, "깃발형", lin(0.85, 0.7), lin(0.65, 0.5), 5, 0.05, 1, "k-ok");
+  s += pat(gx[2], r1, "페넌트형", lin(0.9, 0.72), lin(0.55, 0.7), 5, 0.05, 1, "k-ok");
+  s += pat(gx[0], r2, "쐐기형", lin(0.85, 0.45), lin(0.45, 0.3), 5, 0.95, 0.9, "k-ok");
+  s += pat(gx[1], r2, "직사각형", () => 0.75, () => 0.35, 5, 0.1, 1, "k-ok");
+  const dia = t => { const m = 0.53, w = t < m ? 0.1 + 0.7 * (t / m) : 0.8 * (1 - (t - m) / (1 - m)) + 0.06; return w; };
+  s += pat(gx[2], r2, "다이아몬드형", t => 0.5 + dia(t) / 2, t => 0.5 - dia(t) / 2, 6, 0.05, 0.95, "k-ok");
+  s += text(4, 230, "반전형: 추세가 뒤집힌다", {c: "k-bd", b: 1});
+  s += pat(gx[0], 240, "확대형", lin(0.6, 0.95), lin(0.45, 0.1), 6, 0.1, 0.02, "k-bd");
+  s += text(118, 262, "고점은 높아지고", {c: "k-mu"}) + text(118, 280, "저점은 낮아진다", {c: "k-mu"}) + text(118, 302, "상승추세 말기에 나온다", {c: "k-mu"});
+  return {title, caption: "삼각형, 깃발형, 페넌트형, 쐐기형, 직사각형, 다이아몬드형은 패턴이 끝나면 원래 추세가 이어지는 지속형이다. 변동폭이 점점 커지는 확대형은 반전형이라 구분해야 한다.", svg: svg(340, 334, title, s)};
+})();
+
+F["ta-obv"] = (function () {
+  const title = "주가와 OBV";
+  const N = 80;
+  const pr = series(N, t => 100 + 9 * Math.sin(t / 9) + 0.18 * t + 2 * Math.sin(t * 1.7));
+  const vol = series(N, t => 50 + 30 * Math.abs(Math.sin(t * 2.3 + 1)));
+  const obv = [0];
+  for (let i = 1; i < N; i++) obv.push(obv[i - 1] + (pr[i] > pr[i - 1] ? vol[i] : pr[i] < pr[i - 1] ? -vol[i] : 0));
+  const P1 = plane({L: 16, R: 324, T: 40, B: 120, x0: 0, x1: N - 1, y0: Math.min(...pr) - 2, y1: Math.max(...pr) + 2});
+  const P2 = plane({L: 16, R: 324, T: 150, B: 236, x0: 0, x1: N - 1, y0: Math.min(...obv) - 60, y1: Math.max(...obv) + 120});
+  let s = text(16, 20, "주가", {b: 1}) + text(16, 140, "OBV(상승일 거래량 − 하락일 거래량 누적)", {b: 1});
+  s += poly(P1.map(pr.map((v, i) => [i, v])), "k-fg", sw(2));
+  s += poly(P2.map(obv.map((v, i) => [i, v])), "k-ac", sw(2));
+  s += line(16, 236, 324, 236, "k-ln") + text(324, 254, "시간", {a: "e", c: "k-mu"});
+  // U·D마크: 직전 15일 고점(저점) 돌파, 신호 사이 최소 12일
+  let last = -99, marks = 0;
+  for (let i = 15; i < N; i++) {
+    const w = obv.slice(i - 15, i), hi = Math.max(...w), lo = Math.min(...w);
+    let k = obv[i] > hi ? "U" : obv[i] < lo ? "D" : "";
+    if (!k || i - last < 12) continue;
+    last = i; marks++;
+    const x = P2.sx(i), y = P2.sy(obv[i]);
+    s += ring(x, y, k === "U" ? "k-ok" : "k-bd", 5);
+    s += text(x, k === "U" ? y - 12 : y + 24, k === "U" ? "U마크" : "D마크", {a: "m", c: k === "U" ? "k-ok" : "k-bd", b: 1});
+  }
+  return {title, caption: "OBV는 오른 날 거래량을 더하고 내린 날 거래량을 빼서 누적한 선이다. 직전 고점을 위로 뚫으면 U마크(매수), 직전 저점을 아래로 뚫으면 D마크(매도)로 본다.", svg: svg(340, 262, title, s), _marks: marks};
+})();
+
+F["ind-lifecycle"] = (function () {
+  const title = "산업 라이프사이클";
+  const sales = t => 100 / (1 + Math.exp(-(t - 3.3) * 1.3)) * (t > 7 ? Math.exp(-Math.pow((t - 7) / 2.6, 2)) : 1);
+  const prof = t => 40 * Math.exp(-Math.pow((t - 5) / 1.9, 2)) - 10 * Math.exp(-Math.pow(t - 1, 2));
+  const P = plane({L: 40, R: 322, T: 56, B: 200, x0: 0, x1: 10, y0: -40, y1: 108});
+  let s = axes(P, "시간", "", {ax: 0, xlUp: 1});
+  s += text(P.L - 6, P.sy(0) + 5, "0", {a: "e", c: "k-mu"});
+  [2.2, 5, 8].forEach(b => { s += line(P.sx(b), P.T - 20, P.sx(b), P.B, "k-ln", DOT); });
+  [["도입기", 1.1], ["성장기", 3.6], ["성숙기", 6.5], ["쇠퇴기", 9]].forEach(t => { s += text(P.sx(t[1]), 22, t[0], {a: "m", b: 1}); });
+  s += poly(P.map(curve(sales, 0, 10, 80)), "k-ac", sw(3));
+  s += poly(P.map(curve(prof, 0, 10, 80)), "k-wn", sw(2.5));
+  s += text(P.sx(6.2), P.sy(sales(6.2)) - 10, "매출", {a: "m", c: "k-ac", b: 1});
+  s += text(P.sx(5), P.sy(prof(5)) - 10, "이익", {a: "m", c: "k-wn", b: 1});
+  s += text(P.sx(0.2), P.sy(-36), "도입기 적자", {c: "k-bd", b: 1});
+  return {title, caption: "도입기에는 고정비 부담으로 적자가 나고, 성장기에 매출과 이익이 급증한다. 성숙기에는 판촉경쟁으로 이익이 줄고, 쇠퇴기에는 매출도 줄어든다(곡선 모양은 가정).", svg: svg(340, 226, title, s)};
+})();
+
+F["fut-basis-convergence"] = (function () {
+  const title = "베이시스의 만기 수렴";
+  const T = 10, S = t => 100 + 5 * Math.sin(t * 0.9) + 1.5 * Math.sin(t * 2.7), Fp = t => S(t) * (1 + 0.012 * (T - t));
+  const P = plane({L: 40, R: 300, T: 30, B: 186, x0: 0, x1: T, y0: 86, y1: 124});
+  let s = axes(P, "시간", "가격", {xlUp: 1});
+  const cs = curve(S, 0, T, 60), cf = curve(Fp, 0, T, 60);
+  s += area(P.map([...cf, ...cs.slice().reverse()]), "k-wn", 0.2);
+  s += poly(P.map(cf), "k-ac", sw(2.5)) + poly(P.map(cs), "k-fg", sw(2.5));
+  s += text(P.sx(0.2), P.sy(119.5), "선물가격 F", {c: "k-ac", b: 1});
+  s += text(P.sx(0.2), P.sy(S(0)) + 34, "현물가격 S", {b: 1});
+  const t1 = 6;
+  s += line(P.sx(t1), P.T, P.sx(t1), P.B, "k-wn", DASH);
+  s += text(P.sx(t1), P.B + 18, "만기 전 청산", {a: "m", c: "k-wn", b: 1});
+  s += text(P.sx(t1) - 6, P.T + 4, "랜덤 베이시스", {a: "e", c: "k-wn"});
+  s += line(P.sx(T), P.T, P.sx(T), P.B, "k-ok", DASH);
+  s += dot(P.sx(T), P.sy(S(T)), "k-ok", 5);
+  s += text(P.sx(T), P.B + 18, "만기", {a: "m", c: "k-ok", b: 1});
+  s += text(P.sx(T) - 8, P.sy(S(T)) + 22, "F = S", {a: "e", c: "k-ok", b: 1}) + text(P.sx(T) - 6, P.T + 4, "제로 베이시스", {a: "e", c: "k-ok"});
+  s += text(P.sx(1.2), P.sy(88), "베이시스 = F − S", {c: "k-wn", b: 1});
+  return {title, caption: "선물가격과 현물가격의 차이(베이시스)는 만기로 갈수록 줄어 만기에 0이 된다. 만기에 청산하면 제로 베이시스 헤지로 베이시스 위험이 없고, 만기 전에 청산하면 그 시점 베이시스를 모르는 랜덤 베이시스 헤지가 된다.", svg: svg(340, 214, title, s)};
+})();
+
+F["bond-cb-value"] = (function () {
+  const title = "전환사채(CB) 가치";
+  const SB = 90, par = x => x, cb = x => (SB + par(x) + Math.sqrt(Math.pow(SB - par(x), 2) + 2500)) / 2 + 6;
+  const P = plane({L: 40, R: 316, T: 30, B: 196, x0: 0, x1: 180, y0: 0, y1: 200});
+  let s = axes(P, "주가", "CB 가치");
+  s += line(P.L, P.sy(SB), P.R, P.sy(SB), "k-wn", sw(2.5) + DASH);
+  s += poly(P.map([[0, 0], [180, 180]]), "k-fg", sw(2.5));
+  s += poly(P.map(curve(cb, 0, 180, 60)), "k-ac", sw(3));
+  s += text(P.sx(2), P.sy(SB) + 22, "일반사채 가치", {c: "k-wn", b: 1});
+  s += text(P.R, P.sy(150) + 24, "패리티가격", {a: "e", c: "k-fg", b: 1});
+  s += text(P.sx(2), P.sy(cb(0)) - 14, "CB 시장가격", {c: "k-ac", b: 1});
+  const xg = 100;
+  s += arrow(P.sx(xg), P.sy(par(xg)), P.sx(xg), P.sy(cb(xg)), "k-bd", sw(1.5), true);
+  s += text(P.sx(xg) + 10, P.sy(cb(xg)) - 12, "괴리(전환프리미엄)", {a: "e", c: "k-bd", b: 1});
+  return {title, caption: "CB 시장가격은 일반사채 가치와 패리티가격 중 큰 쪽보다 위에 있다. 패리티가격은 주가 × 전환주수이고, CB 시장가격에서 패리티가격을 뺀 차이가 괴리(전환프리미엄)다(곡선 모양은 가정).", svg: svg(340, 226, title, s)};
+})();
+
 // ---------- 출력 ----------
 const CATALOG = ["pay-long-call", "pay-short-call", "pay-long-put", "pay-short-put", "pay-covered-call", "pay-protective-put", "pay-bull-call-spread", "pay-bear-put-spread", "pay-long-butterfly", "pay-short-butterfly", "pay-long-straddle", "pay-short-straddle", "pay-long-strangle", "pay-short-strangle", "pay-collar", "pay-futures-long-short", "pay-els-stepdown",
   "bond-price-yield", "yield-curve-shapes", "bond-duration-maturity", "bond-immunization", "bond-riding",
@@ -967,7 +1257,9 @@ const CATALOG = ["pay-long-call", "pay-short-call", "pay-long-put", "pay-short-p
   "fin-leverage", "fin-ddm",
   "macro-is-lm", "macro-ad-as", "macro-phillips", "macro-liquidity-trap", "macro-jcurve",
   "re-four-quadrant", "alt-pe-jcurve", "alt-abs-structure", "alt-trs-cds",
-  "perf-sharpe-treynor", "perf-style-box"];
+  "perf-sharpe-treynor", "perf-style-box",
+  "tax-classification-tree", "tax-appeal-flow", "tax-fin-income-threshold", "mbs-level-payment", "mbs-securitization-types", "alt-cdo-tranche",
+  "re-appraisal-3", "ta-patterns-continuation", "ta-obv", "ind-lifecycle", "fut-basis-convergence", "bond-cb-value"];
 
 function main() {
   const missing = CATALOG.filter(id => !F[id]);
@@ -990,7 +1282,7 @@ function main() {
       const c = CHECK[id];
       console.log(id + ": 손익분기 " + (Array.isArray(c.bep) ? c.bep.join(", ") : c.bep) + " / 최대이익 " + (typeof c.maxP === "number" ? fmt(c.maxP) : c.maxP) + " / 최대손실 " + (typeof c.maxL === "number" ? fmt(c.maxL) : c.maxL));
     });
-    console.log("ta-cross 교차 수: " + F["ta-cross"]._cross);
+    console.log("ta-cross 교차 수: " + F["ta-cross"]._cross + ", ta-obv U·D마크 수: " + F["ta-obv"]._marks);
   }
 }
 main();
