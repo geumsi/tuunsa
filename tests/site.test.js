@@ -121,3 +121,8 @@ test("허브를 개인 jeongtai.github.io로 가정한 문구가 없다", () => 
     assert.ok(!/허브[^\n]{0,20}jeongtai\.github\.io/.test(t), f);
   });
 });
+test("index.html: 그림·용어집·render.js를 app.js보다 먼저 읽는다", () => {
+  const ix = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  const at = f => ix.indexOf(`src="${f}"`);
+  ["data/figures.js", "data/glossary.js", "render.js"].forEach(f => assert.ok(at(f) > 0 && at(f) < at("app.js"), f));
+});

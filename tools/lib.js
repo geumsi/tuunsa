@@ -39,4 +39,11 @@ function loadData(root){
   C.questions.forEach(q => { if(D[q.area] && !D[q.area].questions.some(x => x.id === q.id)) D[q.area].questions.push(q); });
   return ORDER.filter(id => D[id] && Array.isArray(D[id].questions)).map(id => D[id]);
 }
-module.exports = {ROOT, ORDER, SUBJECTS, loadConfig, loadData};
+// 그림(data/figures.js)과 용어집(data/glossary.js). 파일이 없으면 빈 객체
+function loadExtras(root){
+  const dir = path.join(root || ROOT, "data");
+  const files = ["figures.js", "glossary.js"].map(f => path.join(dir, f)).filter(f => fs.existsSync(f));
+  const w = runFiles(files);
+  return {FIGURES: w.FIGURES || {}, GLOSSARY: w.GLOSSARY || {}};
+}
+module.exports = {ROOT, ORDER, SUBJECTS, loadConfig, loadData, loadExtras};

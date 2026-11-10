@@ -114,3 +114,14 @@ test("정적 페이지: CSP 메타, iframe 방어, 영역 id 검사", () => {
   assert.ok(f.indexOf('src="../../site.js"') > 0);
   assert.throws(() => build([{id:"../x", subject:1, title:"t", questions:[]}], cfg, opt()), /영역 id/);
 });
+
+test("정적 페이지 해설에도 개념·그림·용어집 풀이가 앱과 같은 규칙으로 들어간다", () => {
+  const q = Object.assign({}, mc, {id:"s1_tax_009", q:"VaR 문제", concept:"VaR 개념\n$ a = b", fig:["f1", "nope"], explain:"VaR 해설"});
+  const extras = {FIGURES:{f1:{title:"그림1", svg:'<svg onload="x()"><path/></svg>', caption:"설명"}}, GLOSSARY:{VaR:{full:"Value at Risk"}}};
+  const f = build(area([q]), cfg, opt(), extras)["s1_tax/009.html"];
+  const d = f.slice(f.indexOf("<details>"), f.indexOf("</details>"));
+  assert.ok(d.indexOf('class="concept"') < d.indexOf("<figure") && d.indexOf("<figure") < d.indexOf("<h3>해설</h3>"));
+  assert.ok(d.includes('<div class="fx">a = b</div>') && !/onload/.test(f));
+  assert.strictEqual((f.match(/class="gloss"/g) || []).length, 1, "해설 영역에서 한 번만, h1(문제)에는 없음");
+  assert.ok(f.includes("<h1>VaR 문제</h1>"));
+});

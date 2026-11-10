@@ -7,21 +7,16 @@
 "use strict";
 const fs = require("fs");
 const path = require("path");
-const {ROOT, SUBJECTS, loadConfig, loadData} = require("./lib");
+const {ROOT, SUBJECTS, loadConfig, loadData, loadExtras} = require("./lib");
 const SITE = require("../site.js");
+const R = require("../render.js");
 
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 // JSON-LD는 script 안에 들어가므로 </script> 끊김을 막는다.
 const ld = o => JSON.stringify(o).replace(/</g, "\\u003c");
 const cut = (s, n) => { s = String(s || "").replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
-// app.js rich()와 같은 규칙: "· "로 시작하는 줄은 글머리표
-const rich = t => String(t || "").split("\n").reduce((acc, line) => {
-  const li = /^·\s*/.test(line), last = acc[acc.length - 1];
-  if(li && last && last.ul) last.items.push(line.replace(/^·\s*/, ""));
-  else if(li) acc.push({ul:true, items:[line.replace(/^·\s*/, "")]});
-  else if(line.trim()) acc.push({ul:false, text:line});
-  return acc;
-}, []).map(b => b.ul ? `<ul>${b.items.map(i => `<li>${esc(i)}</li>`).join("")}</ul>` : `<p>${esc(b.text)}</p>`).join("");
+// 해설 글: 앱과 같은 render.js 규칙("· " 글머리표, "$ " 공식 줄, 용어집 풀이)
+const rich = (t, g) => R.rich(t, g);
 const kbd = s => esc(s).replace(/`([^`]+)`/g, "<kbd>$1</kbd>");
 
 function parseArgs(argv){
@@ -95,17 +90,20 @@ ${ad ? adJs(up) + "\n" : ""}</body>
 `;
 }
 
-function explainHtml(cfg, q, url){
-  const memo = Array.isArray(q.memo) && q.memo.length ? `<div class="memo"><h3>암기</h3><ul>${q.memo.map(m => `<li>${esc(m)}</li>`).join("")}</ul></div>` : "";
+// 앱과 같은 순서(개념·그림, 해설, 암기, 계산기, 실무, 사례, 보기별 해설)로 그리고, 용어집 풀이도 이 순서로 처음 나온 약어에만 붙인다.
+function explainHtml(cfg, q, url, extras){
+  const x = extras || {}, g = R.makeGloss(x.GLOSSARY);
+  const memo = Array.isArray(q.memo) && q.memo.length ? `<div class="memo"><h3>암기</h3><ul>${q.memo.map(m => `<li>${g.text(esc(m))}</li>`).join("")}</ul></div>` : "";
   const c = q.calc ? `<div class="calc"><h3>계산기 꿀팁</h3>${q.calc.formula ? `<p class="formula">${esc(q.calc.formula)}</p>` : ""}${Array.isArray(q.calc.steps) && q.calc.steps.length ? `<h4>일반 계산기</h4><ol class="keys">${q.calc.steps.map(t => `<li>${kbd(t)}</li>`).join("")}</ol>` : ""}${q.calc.sci ? `<h4>공학용 계산기</h4><p class="keys1">${kbd(q.calc.sci)}</p>` : ""}${q.calc.tip ? `<p class="tip"><b>꿀팁</b> ${kbd(q.calc.tip)}</p>` : ""}</div>` : "";
   const real = q.case && q.case.type === "real";
-  const cs = q.case && q.case.text ? `<div class="case ${real ? "real" : "ex"}"><p class="case-h"><span class="case-tag">${real ? `실제 사례${q.case.year ? ` · ${esc(q.case.year)}` : ""}` : "가상 사례"}</span>${q.case.title ? `<b>${esc(q.case.title)}</b>` : ""}</p>${rich(q.case.text)}${real && /^https:\/\//.test(q.case.src || "") ? `<a class="case-src" href="${esc(q.case.src)}" rel="noopener nofollow">출처: ${esc(q.case.srcName || q.case.src.replace(/^https:\/\/(www\.)?/, "").split("/")[0])}</a>` : ""}${real ? `<p class="case-note">${SITE.caseNote(cfg, q.case, `${url} · 사례 「${q.case.title || ""}」`)}</p>` : ""}</div>` : "";
-  const pr = q.practice || cs ? `<div class="practice"><h3>실무에서는</h3>${rich(q.practice)}${cs}</div>` : "";
+  const cs = q.case && q.case.text ? `<div class="case ${real ? "real" : "ex"}"><p class="case-h"><span class="case-tag">${real ? `실제 사례${q.case.year ? ` · ${esc(q.case.year)}` : ""}` : "가상 사례"}</span>${q.case.title ? `<b>${esc(q.case.title)}</b>` : ""}</p>${rich(q.case.text, g)}${real && /^https:\/\//.test(q.case.src || "") ? `<a class="case-src" href="${esc(q.case.src)}" rel="noopener nofollow">출처: ${esc(q.case.srcName || q.case.src.replace(/^https:\/\/(www\.)?/, "").split("/")[0])}</a>` : ""}${real ? `<p class="case-note">${SITE.caseNote(cfg, q.case, `${url} · 사례 「${q.case.title || ""}」`)}</p>` : ""}</div>` : "";
+  const pr = q.practice || cs ? `<div class="practice"><h3>실무에서는</h3>${rich(q.practice, g)}${cs}</div>` : "";
   const notes = q.type === "mc" && Array.isArray(q.choiceNotes) ? `<div class="cnotes"><h3>보기별 해설</h3>${q.choices.map((ch, k) => {
-    const n = q.choiceNotes[k] || {}, row = (l, t) => t ? `<div class="crow"><b>${l}</b><div>${rich(t)}</div></div>` : "";
+    const n = q.choiceNotes[k] || {}, row = (l, t) => t ? `<div class="crow"><b>${l}</b><div>${rich(t, g)}</div></div>` : "";
     return `<div class="cnote${k === q.answer ? " ans" : ""}"><div class="chead"><span class="n">${k + 1}</span><span class="ctext">${esc(ch)}</span>${k === q.answer ? `<span class="ctag good">정답</span>` : ""}</div>${row("용어", n.term)}${row("이론", n.theory)}${row("실무", n.practice)}</div>`;
   }).join("")}</div>` : "";
-  return `<div class="explain"><p><b>정답 ${esc(ansText(q))}</b></p><h3>해설</h3>${rich(q.explain)}${memo}${c}${pr}${notes}${q.ref ? `<div class="ref">정리노트 · ${esc(q.ref)}</div>` : ""}</div>`;
+  const head = R.conceptHtml(q, x.FIGURES, g);
+  return `<div class="explain"><p><b>정답 ${esc(ansText(q))}</b></p>${head}<h3>해설</h3>${rich(q.explain, g)}${memo}${c}${pr}${notes}${q.ref ? `<div class="ref">정리노트 · ${esc(q.ref)}</div>` : ""}</div>`;
 }
 // 실명 사례가 있는 페이지는 title·description·og에 회사명을 넣지 않는다(법률팀 R12). 사례 본문은 그대로 둔다.
 // 회사명을 따로 표시한 데이터가 없으므로, 사례 제목의 낱말(2자 이상)이 문제 글에 하나라도 있으면 문제 글 대신 영역명으로 메타를 만든다.
@@ -124,7 +122,7 @@ function questionPage(ctx, area, q, i){
   const desc = !safe ? `투자자산운용사 ${area.title} 연습문제 ${i + 1}번. 보기와 정답·해설.`
     : cut(opt.hideAnswer || real ? `투자자산운용사 ${area.title} 연습문제. ${q.q}` : firstSentence(q.explain) || q.q, 120);
   const choices = q.type === "mc" ? `<ol class="ch">${q.choices.map(c => `<li><span>${esc(c)}</span></li>`).join("")}</ol>` : `<p class="muted small">O·X 문제: 맞으면 O, 틀리면 X</p>`;
-  const answer = opt.hideAnswer ? "" : `<details><summary>정답과 해설 보기</summary>${explainHtml(cfg, q, url)}</details>`;
+  const answer = opt.hideAnswer ? "" : `<details><summary>정답과 해설 보기</summary>${explainHtml(cfg, q, url, ctx.extras)}</details>`;
   // 같은 영역 다른 문제 5개: 이 문제 다음부터 차례로(끝이면 처음으로 돌아감)
   const more = [];
   for(let k = 1; k < qs.length && more.length < 5; k++) more.push(qs[(i + k) % qs.length]);
@@ -184,9 +182,9 @@ function sitemap(urls){
 }
 
 // 파일을 쓰지 않고 {상대경로: 내용}을 만든다. 테스트에서 그대로 쓴다.
-function build(areas, cfg, opt){
+function build(areas, cfg, opt, extras){
   // sitemap은 놓이는 폴더(q/) 아래 주소만 담는다(sitemaps.org). 사이트 루트는 루트 sitemap.xml에 있다.
-  const ctx = {cfg, opt}, files = {}, urls = [];
+  const ctx = {cfg, opt, extras: extras || {}}, files = {}, urls = [];
   const ids = new Set();
   areas.forEach(a => { if(!/^[A-Za-z0-9_]+$/.test(a.id || "")) throw new Error("영역 id 형식 오류: " + a.id); });
   areas.forEach(a => a.questions.forEach(q => {
@@ -205,7 +203,7 @@ function build(areas, cfg, opt){
 
 function main(){
   const opt = parseArgs(process.argv.slice(2));
-  const files = build(loadData(), loadConfig(), opt);
+  const files = build(loadData(), loadConfig(), opt, loadExtras());
   let bytes = 0;
   Object.keys(files).forEach(rel => {
     const p = path.join(opt.out, rel);
