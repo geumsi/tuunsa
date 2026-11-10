@@ -335,3 +335,31 @@ body.covered{overflow:hidden}
 .legal h3{font-size:.95rem;margin:16px 0 6px}
 .legal ul{padding-left:1.3em;margin:6px 0}
 .legal a{color:var(--accent)}
+
+/* 패스·찍어서 맞음 */
+.passbtn{margin-top:10px;min-height:44px;background:transparent;color:var(--muted);font-weight:600}
+.verdict.passed .mark{border-style:dashed}
+.guess{display:flex;align-items:center;gap:8px;min-height:44px;margin-top:8px;font-size:.88rem;color:var(--muted);cursor:pointer}
+
+/* 개념 상자, 공식 줄, 그림, 용어집 풀이. 그림 SVG는 currentColor와 --fg·--accent 등 변수를 쓴다 */
+:root{--fg:var(--ink)}
+.explain .concept{margin:0 0 12px;padding:10px 12px;border-radius:10px;background:var(--surface);border:1px solid var(--line)}
+.explain .concept h3{margin:0 0 4px;color:var(--accent)}
+.fx{margin:8px 0;padding:8px 10px;border-radius:8px;background:var(--surface);font:600 .92rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;text-align:center;white-space:pre;overflow-x:auto}
+.fig{margin:0 0 12px;padding:10px;border-radius:10px;background:var(--surface);border:1px solid var(--line);color:var(--fg)}
+.fig-svg{overflow-x:auto}
+.fig-svg svg{display:block;max-width:100%;height:auto;margin:0 auto}
+.fig figcaption{margin-top:6px;font-size:.8rem;color:var(--muted)}
+.gloss{font-size:.75em;color:var(--muted);margin-left:1px}
+
+/* 오답 분석 */
+.review-h{font-size:1.25rem;margin:0}
+.rv{padding:14px;margin:0 0 12px}
+.rv h2{font-size:1rem;margin:0 0 8px}
+.rv-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.rank{margin:0;padding-left:1.4em;display:grid;gap:8px}
+.rank li .t{display:block;font-weight:700;font-size:.92rem}
+.rvlist{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.rvlist li{display:grid;gap:2px;padding-top:10px;border-top:1px solid var(--line)}
+.rvlist .tag{justify-self:start}
+.rvlist .rq{font-size:.92rem}

@@ -3,48 +3,9 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-const ROOT = path.join(__dirname, "..");
 
-// 어떤 속성을 읽어도 스스로를 돌려주는 가짜 요소. innerHTML 등 쓴 값은 기억한다.
-function stub(){
-  const vals = {};
-  const p = new Proxy(function(){}, {
-    get(t, k){
-      if(k in vals) return vals[k];
-      if(k === Symbol.toPrimitive) return () => "";
-      if(k === "forEach") return () => {};
-      if(k === "length") return 0;
-      return p;
-    },
-    set(t, k, v){ vals[k] = v; return true; },
-    apply(){ return p; }
-  });
-  return p;
-}
-function boot(store){
-  const els = {};
-  const doc = stub();
-  const document = new Proxy(doc, {get(t, k){
-    if(k === "getElementById") return id => (els[id] = els[id] || stub());
-    if(k === "querySelector") return () => stub();
-    if(k === "querySelectorAll") return () => [];
-    if(k === "createElement") return () => stub();
-    return doc[k];
-  }});
-  const ls = {getItem: k => k in store ? store[k] : null, setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; }};
-  const win = {document, localStorage: ls, location: {hash:"", pathname:"/", search:""}, history: {replaceState(){}},
-    addEventListener(){}, scrollTo(){}, setTimeout, innerHeight: 800, navigator: {}};
-  win.window = win; win.self = win; win.top = win;
-  const ctx = vm.createContext(Object.assign(win, {console}));
-  const order = ["config.js", "site.js", "state.js", "ads.js"]
-    .concat(fs.readFileSync(path.join(ROOT, "index.html"), "utf8").match(/src="(data\/[^"]+)"/g).map(m => m.slice(5, -1)))
-    .concat(["app.js"]);
-  order.forEach(f => vm.runInContext(fs.readFileSync(path.join(ROOT, f), "utf8"), ctx, {filename: f}));
-  return els.view.innerHTML;
-}
+const {boot: boot0} = require("./harness.js");
+const boot = store => boot0(store).view();
 const text = h => h.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
 const BANNED = /투운사|모의고사|시험|합격|과락|오답|정답|문제|과목|자격/g;
 

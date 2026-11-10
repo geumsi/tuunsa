@@ -87,3 +87,21 @@ test("중간에 그만둔 세션의 원래 문항 수(total)는 범위 안일 �
   assert.strictEqual(V.session(Object.assign(clone(good), {i:2, total:1}), has, isMc).total, undefined);
   assert.strictEqual(V.session(Object.assign(clone(good), {i:2, total:"<x>"}), has, isMc).total, undefined);
 });
+
+test("기록 새 필드 p·g·lk는 형식이 맞을 때만 남기고, 예전 기록은 그대로", () => {
+  const s = V.stats({s1_tax_001:{c:1, w:2, last:0, t:5, p:1, g:0, lk:"p"}, s1_tax_002:{c:1, w:0, last:1, t:1}}, has);
+  assert.deepStrictEqual(s.s1_tax_001, {c:1, w:2, last:0, t:5, p:1, g:0, lk:"p"});
+  assert.deepStrictEqual(s.s1_tax_002, {c:1, w:0, last:1, t:1});
+  const bad = V.stats({s1_tax_001:{c:1, w:0, last:1, t:1, p:"<x>", g:-1, lk:"<img>"}}, has);
+  assert.deepStrictEqual(bad.s1_tax_001, {c:1, w:0, last:1, t:1});
+});
+test("두 탭 병합에 새 필드가 함께 간다", () => {
+  const m = V.mergeStats({x:{c:1, w:0, last:1, t:1}}, {x:{c:1, w:1, last:0, t:2, p:1, lk:"p"}});
+  assert.deepStrictEqual(m.x, {c:1, w:1, last:0, t:2, p:1, lk:"p"});
+});
+test("세션: 패스(-1) 답과 찍어서 맞음 표시(guess)", () => {
+  const s = V.session(Object.assign(clone(good), {i:2, ans:{0:-1, 1:-1}, guess:{0:true, 5:true, 1:"x"}}), has, isMc);
+  assert.deepStrictEqual(s.ans, {0:-1, 1:-1});
+  assert.deepStrictEqual(s.guess, {0:true});
+  assert.strictEqual(V.session(Object.assign(clone(good), {ans:{0:-2}}), has, isMc), null);
+});
