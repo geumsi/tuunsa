@@ -10,9 +10,18 @@ const NOGLOSS = {text: s => s};
 // 용어집 풀이. 한 문제의 해설 영역에서 약어가 처음 나올 때만 뒤에 "(풀네임, 한글)"을 작게 붙인다.
 // 입력은 esc를 거친 글자. 영문·숫자에 붙어 있으면(ISA 안의 IS) 매칭하지 않고, 한글이 붙은 경우(IS곡선)는 매칭한다.
 // 이미 괄호로 풀어 쓴 경우(VaR(…), …(VaR))는 붙이지 않고 처음 나온 것으로 친다.
-function makeGloss(G){
-  const keys = G && typeof G === "object" ? Object.keys(G).filter(k => k.trim() && G[k] && typeof G[k] === "object" &&
-    [G[k].full, G[k].ko].some(x => typeof x === "string" && x.trim())) : [];
+// 영역마다 뜻이 다른 약어는 {byArea: {영역id: {full, ko}}}로 받고, 문제의 영역(area)으로 고른다. 그 영역이 없으면 붙이지 않는다.
+const hasText = e => !!e && typeof e === "object" && [e.full, e.ko].some(x => typeof x === "string" && x.trim());
+function entryOf(G, k, area){
+  const e = G[k];
+  if(!e || typeof e !== "object") return null;
+  if(e.byArea && typeof e.byArea === "object") return typeof area === "string" && own(e.byArea, area) && hasText(e.byArea[area]) ? e.byArea[area] : null;
+  return hasText(e) ? e : null;
+}
+function makeGloss(G, area){
+  const E = {};
+  if(G && typeof G === "object") Object.keys(G).forEach(k => { const e = k.trim() ? entryOf(G, k, area) : null; if(e) E[k] = e; });
+  const keys = Object.keys(E);
   if(!keys.length) return NOGLOSS;
   const byEsc = {};
   keys.forEach(k => { byEsc[esc(k)] = k; });
@@ -28,7 +37,7 @@ function makeGloss(G){
     if(seen.has(k)) return m;
     seen.add(k);
     if(/^\s?\(/.test(after) || /\(\s*$/.test(before)) return m;
-    const parts = [G[k].full, G[k].ko].filter(x => typeof x === "string" && x.trim()).map(x => esc(x.trim()));
+    const parts = [E[k].full, E[k].ko].filter(x => typeof x === "string" && x.trim()).map(x => esc(x.trim()));
     return `${m}<small class="gloss">(${parts.join(", ")})</small>`;
   });
   return {text};
@@ -49,18 +58,36 @@ function rich(t, gloss){
     : `<p>${g.text(esc(b.text))}</p>`).join("");
 }
 
-// 그림 SVG는 저장소 파일이라 신뢰하지만, 넣기 전에 script·foreignObject·이벤트 속성·javascript: 링크를 걸러 낸다.
+// 그림 SVG는 저장소 파일이라 신뢰하지만, 허용 목록(디자인팀과 맞춘 요소·속성)에 있는 것만 남긴다.
+// script·style·foreignObject 같은 요소는 내용째 지우고, 그 밖의 모르는 요소는 태그만 지운다. 주석·CDATA도 지운다.
+const SVG_EL = ["svg", "g", "path", "line", "polyline", "polygon", "rect", "circle", "text", "tspan", "title"];
+const SVG_ATTR = ["xmlns", "viewBox", "role", "aria-label", "d", "points", "x", "y", "x1", "y1", "x2", "y2", "cx", "cy", "r", "width", "height", "rx",
+  "dx", "dy", "text-anchor", "dominant-baseline", "font-size", "font-weight", "transform", "opacity", "fill-opacity",
+  "stroke-dasharray", "stroke-width", "stroke-linecap", "stroke-linejoin", "fill", "stroke", "class"];
+const ATTR_BY_LOWER = {};
+SVG_ATTR.forEach(a => { ATTR_BY_LOWER[a.toLowerCase()] = a; });
+function cleanAttrs(raw){
+  const out = [];
+  String(raw).replace(/([^\s=/"'<>]+)(?:\s*=\s*("[^"]*"|'[^']*'|[^\s"'=<>`]+))?/g, (m, name, val) => {
+    const a = ATTR_BY_LOWER[name.toLowerCase()];
+    if(!a || val === undefined) return m;
+    let v = val.replace(/^["']|["']$/g, "");
+    if(/javascript:|url\(|expression\(|[<>]/i.test(v)) return m;
+    if(a === "xmlns" && v !== "http://www.w3.org/2000/svg") return m;
+    out.push(`${a}="${v.replace(/"/g, "&quot;")}"`);
+    return m;
+  });
+  return out.length ? " " + out.join(" ") : "";
+}
 function sanitizeSvg(svg){
   let s = String(svg || "").trim();
   if(!/^<svg[\s>]/i.test(s)) return "";
-  for(let prev = ""; prev !== s;){
-    prev = s;
-    s = s.replace(/<(script|foreignObject|iframe|embed|object)\b[\s\S]*?<\/\1\s*>/gi, "")
-      .replace(/<\/?(script|foreignObject|iframe|embed|object)\b[^>]*>/gi, "")
-      .replace(/[\s/]on[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, " ")
-      .replace(/\s(?:xlink:)?href\s*=\s*("\s*javascript:[^"]*"|'\s*javascript:[^']*'|javascript:[^\s>]*)/gi, " ");
-  }
-  return s;
+  s = s.replace(/<!--[\s\S]*?-->/g, "").replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, "");
+  for(let prev = ""; prev !== s;){ prev = s; s = s.replace(/<(script|style|foreignObject|iframe|embed|object|use|image|a)\b[\s\S]*?<\/\1\s*>/gi, ""); }
+  return s.replace(/<(\/?)([A-Za-z][\w:-]*)([^>]*?)(\/?)>/g, (m, close, name, attrs, self) => {
+    if(SVG_EL.indexOf(name.toLowerCase()) < 0) return "";
+    return close ? `</${name.toLowerCase()}>` : `<${name.toLowerCase()}${cleanAttrs(attrs)}${self ? "/" : ""}>`;
+  }).replace(/<(?![\/A-Za-z])/g, "&lt;");
 }
 function figHtml(ids, FIG){
   if(!Array.isArray(ids) || !FIG || typeof FIG !== "object") return "";
@@ -69,7 +96,7 @@ function figHtml(ids, FIG){
     const svg = f && typeof f === "object" ? sanitizeSvg(f.svg) : "";
     if(!svg) return "";
     const title = typeof f.title === "string" ? f.title : "", cap = typeof f.caption === "string" ? f.caption : "";
-    return `<figure class="fig"><div class="fig-svg"${title ? ` role="img" aria-label="${esc(title)}"` : ""}>${svg}</div>${title || cap ? `<figcaption>${title ? `<b>${esc(title)}</b> ` : ""}${esc(cap)}</figcaption>` : ""}</figure>`;
+    return `<figure class="figbox"><div class="fig-svg"${title ? ` role="img" aria-label="${esc(title)}"` : ""}>${svg}</div>${title || cap ? `<figcaption>${title ? `<b>${esc(title)}</b> ` : ""}${esc(cap)}</figcaption>` : ""}</figure>`;
   }).join("");
 }
 // 해설 맨 앞: 개념 상자, 그 아래 그림

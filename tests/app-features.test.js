@@ -110,3 +110,10 @@ test("그림·용어집 파일이 없어도 해설이 그대로 나온다", () =
   startQuiz(app); app.key("1");
   assert.ok(app.view().includes("<h3>해설</h3>") && !app.view().includes("gloss") && !app.view().includes("<figure"));
 });
+test("앱: 계산 문제·일반 문제 모두 문제 영역으로 용어집 뜻을 고른다", () => {
+  const before = `window.GLOSSARY = {PD:{byArea:{s1_tax:{full:"테스트용 PD"}}}};
+  const q = window.QUIZ_DATA.s1_tax.questions.find(x => x.id === "s1_tax_001"); q.explain = "PD 설명";`;
+  const app = boot({"tuunsa-session": sess("s1_tax_001")}, {beforeApp: before});
+  startQuiz(app); app.key("1");
+  assert.ok(app.view().includes("(테스트용 PD)"));
+});

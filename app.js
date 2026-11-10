@@ -72,7 +72,7 @@ const notesHtml = (q, order, picked, g) => !Array.isArray(q.choiceNotes) ? "" : 
 }).join("")}</div>`;
 // 해설 영역. 용어집 풀이는 이 순서(개념, 해설, 암기, 실무, 사례, 보기별 해설)로 처음 나온 약어에만 붙는다.
 const explainBody = (q, order, picked, head, refLabel) => {
-  const g = R.makeGloss(GLOSS);
+  const g = R.makeGloss(GLOSS, q.area);   // 영역마다 뜻이 다른 약어는 이 문제의 영역으로 고른다
   return `${R.conceptHtml(q, FIGS, g)}${head ? "<h3>해설</h3>" : ""}${rich(q.explain, g)}${memoHtml(q, g)}${calcHtml(q)}${practiceHtml(q, g)}${q.type === "mc" ? notesHtml(q, order, picked, g) : ""}${q.ref ? `<div class="ref">${esc(refLabel)} · ${esc(q.ref)}</div>` : ""}`;
 };
 // 광고 슬롯(ads.js). 업무모드·화면 가리기 중에는 그리지 않는다.

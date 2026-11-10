@@ -91,8 +91,8 @@ ${ad ? adJs(up) + "\n" : ""}</body>
 }
 
 // 앱과 같은 순서(개념·그림, 해설, 암기, 계산기, 실무, 사례, 보기별 해설)로 그리고, 용어집 풀이도 이 순서로 처음 나온 약어에만 붙인다.
-function explainHtml(cfg, q, url, extras){
-  const x = extras || {}, g = R.makeGloss(x.GLOSSARY);
+function explainHtml(cfg, q, url, extras, areaId){
+  const x = extras || {}, g = R.makeGloss(x.GLOSSARY, q.area || areaId);
   const memo = Array.isArray(q.memo) && q.memo.length ? `<div class="memo"><h3>암기</h3><ul>${q.memo.map(m => `<li>${g.text(esc(m))}</li>`).join("")}</ul></div>` : "";
   const c = q.calc ? `<div class="calc"><h3>계산기 꿀팁</h3>${q.calc.formula ? `<p class="formula">${esc(q.calc.formula)}</p>` : ""}${Array.isArray(q.calc.steps) && q.calc.steps.length ? `<h4>일반 계산기</h4><ol class="keys">${q.calc.steps.map(t => `<li>${kbd(t)}</li>`).join("")}</ol>` : ""}${q.calc.sci ? `<h4>공학용 계산기</h4><p class="keys1">${kbd(q.calc.sci)}</p>` : ""}${q.calc.tip ? `<p class="tip"><b>꿀팁</b> ${kbd(q.calc.tip)}</p>` : ""}</div>` : "";
   const real = q.case && q.case.type === "real";
@@ -122,7 +122,7 @@ function questionPage(ctx, area, q, i){
   const desc = !safe ? `투자자산운용사 ${area.title} 연습문제 ${i + 1}번. 보기와 정답·해설.`
     : cut(opt.hideAnswer || real ? `투자자산운용사 ${area.title} 연습문제. ${q.q}` : firstSentence(q.explain) || q.q, 120);
   const choices = q.type === "mc" ? `<ol class="ch">${q.choices.map(c => `<li><span>${esc(c)}</span></li>`).join("")}</ol>` : `<p class="muted small">O·X 문제: 맞으면 O, 틀리면 X</p>`;
-  const answer = opt.hideAnswer ? "" : `<details><summary>정답과 해설 보기</summary>${explainHtml(cfg, q, url, ctx.extras)}</details>`;
+  const answer = opt.hideAnswer ? "" : `<details><summary>정답과 해설 보기</summary>${explainHtml(cfg, q, url, ctx.extras, area.id)}</details>`;
   // 같은 영역 다른 문제 5개: 이 문제 다음부터 차례로(끝이면 처음으로 돌아감)
   const more = [];
   for(let k = 1; k < qs.length && more.length < 5; k++) more.push(qs[(i + k) % qs.length]);

@@ -125,3 +125,11 @@ test("정적 페이지 해설에도 개념·그림·용어집 풀이가 앱과 �
   assert.strictEqual((f.match(/class="gloss"/g) || []).length, 1, "해설 영역에서 한 번만, h1(문제)에는 없음");
   assert.ok(f.includes("<h1>VaR 문제</h1>"));
 });
+test("정적 페이지 용어집 영역별 뜻: 영역 id로 고른다", () => {
+  const GL = {PD:{byArea:{s1_tax:{full:"Probability of Default", ko:"부도확률"}}}};
+  const q = Object.assign({}, mc, {id:"s1_tax_010", explain:"PD를 추정한다."});
+  const f = build(area([q]), cfg, opt(), {GLOSSARY:GL})["s1_tax/010.html"];
+  assert.ok(f.includes("(Probability of Default, 부도확률)"));
+  const f2 = build([{id:"s2_risk", subject:2, title:"리스크", questions:[Object.assign({}, q, {id:"s2_risk_001"})]}], cfg, opt(), {GLOSSARY:GL})["s2_risk/001.html"];
+  assert.ok(!f2.includes('class="gloss"'));
+});

@@ -45,7 +45,7 @@ test("용어집: esc를 거친 뒤 붙이고, 문자 참조(&amp;) 안은 건드
 });
 test("그림 SVG 정리: script, on* 속성, foreignObject, javascript: 링크 제거", () => {
   const bad = `<svg viewBox="0 0 10 10" onload="alert(1)"><script>alert(2)</script><foreignObject><div onclick="x()">h</div></foreignObject>`
-    + `<a href="javascript:alert(3)"><rect onmouseover='y()' fill="var(--accent)"/></a><g/onload=z()></g><SCRIPT src=x></SCRIPT></svg>`;
+    + `<a href="javascript:alert(3)"><circle/></a><rect onmouseover='y()' fill="var(--accent)"/><g/onload=z()></g><SCRIPT src=x></SCRIPT></svg>`;
   const s = R.sanitizeSvg(bad);
   assert.ok(!/script|onload|onclick|onmouseover|foreignObject|javascript:/i.test(s), s);
   assert.ok(s.includes('fill="var(--accent)"'));
@@ -69,4 +69,25 @@ test("개념 상자는 그림보다 앞, 용어 풀이는 개념에서 처음 �
   assert.ok(h.includes("gloss"));
   assert.ok(!g.text("VaR").includes("gloss"));
   assert.strictEqual(R.conceptHtml({}, F, g), "");
+});
+
+const GA = {PD:{byArea:{s2_risk:{full:"Probability of Default", ko:"부도확률"}, s3_bond:{full:"Primary Dealer", ko:"국고채전문딜러"}}}, VaR:G.VaR};
+test("용어집 영역별 뜻: 문제 영역으로 고르고, 그 영역이 없으면 붙이지 않는다", () => {
+  assert.ok(R.makeGloss(GA, "s2_risk").text("PD 추정").includes("(Probability of Default, 부도확률)"));
+  assert.ok(R.makeGloss(GA, "s3_bond").text("PD 제도").includes("(Primary Dealer, 국고채전문딜러)"));
+  const g = R.makeGloss(GA, "s1_tax");
+  assert.ok(!g.text("PD").includes("gloss"));
+  assert.ok(g.text("VaR").includes("gloss"), "영역 구분 없는 항목은 그대로");
+  assert.ok(!R.makeGloss(GA).text("PD").includes("gloss"), "영역을 모르면 붙이지 않음");
+  assert.ok(!R.makeGloss({PD:{byArea:{s2_risk:{}}}}, "s2_risk").text("PD").includes("gloss"));
+  assert.ok(!R.makeGloss({PD:{byArea:{}}}, "toString").text("PD").includes("gloss"), "프로토타입 키(toString)는 영역으로 치지 않음");
+});
+test("그림 허용 목록: 디자인팀 요소·속성만 남기고 class 색은 유지", () => {
+  const svg = `<svg viewBox="0 0 100 50" class="fig" role="img" aria-label="그림" style="x" xmlns="http://www.w3.org/2000/svg"><title>제목</title>`
+    + `<g transform="translate(1 2)"><polyline points="0,0 1,1" class="ac" stroke-width="2" stroke-dasharray="3 2"/><text x="5" y="9" text-anchor="middle" dominant-baseline="middle" class="fg">축<tspan dx="2" class="mu">값</tspan></text></g>`
+    + `<rect class="f-ok" width="10" height="5" rx="2" fill="url(http://evil)"/><a href="https://x"><circle r="1"/></a><image href="x.png"/><use href="#a"/><style>.fg{fill:red}</style><!-- c --><defs><path d="M0 0"/></defs></svg>`;
+  const s = R.sanitizeSvg(svg);
+  assert.ok(s.startsWith('<svg viewBox="0 0 100 50" class="fig" role="img" aria-label="그림" xmlns="http://www.w3.org/2000/svg"><title>제목</title>'), s);
+  ["polyline", 'class="ac"', 'stroke-dasharray="3 2"', 'text-anchor="middle"', 'dominant-baseline="middle"', "<tspan", 'class="f-ok"', 'rx="2"', '<path d="M0 0"/>'].forEach(t => assert.ok(s.includes(t), t));
+  ["style", "url(", "<a", "<circle", "<image", "<use", "<!--", "<defs", "evil"].forEach(t => assert.ok(!s.includes(t), t + " 남음: " + s));
 });

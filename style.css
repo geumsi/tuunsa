@@ -346,10 +346,10 @@ body.covered{overflow:hidden}
 .explain .concept{margin:0 0 12px;padding:10px 12px;border-radius:10px;background:var(--surface);border:1px solid var(--line)}
 .explain .concept h3{margin:0 0 4px;color:var(--accent)}
 .fx{margin:8px 0;padding:8px 10px;border-radius:8px;background:var(--surface);font:600 .92rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;text-align:center;white-space:pre;overflow-x:auto}
-.fig{margin:0 0 12px;padding:10px;border-radius:10px;background:var(--surface);border:1px solid var(--line);color:var(--fg)}
+.figbox{margin:0 0 12px;padding:10px;border-radius:10px;background:var(--surface);border:1px solid var(--line);color:var(--fg)}
 .fig-svg{overflow-x:auto}
 .fig-svg svg{display:block;max-width:100%;height:auto;margin:0 auto}
-.fig figcaption{margin-top:6px;font-size:.8rem;color:var(--muted)}
+.figbox figcaption{margin-top:6px;font-size:.8rem;color:var(--muted)}
 .gloss{font-size:.75em;color:var(--muted);margin-left:1px}
 
 /* 오답 분석 */
@@ -363,3 +363,15 @@ body.covered{overflow:hidden}
 .rvlist li{display:grid;gap:2px;padding-top:10px;border-top:1px solid var(--line)}
 .rvlist .tag{justify-self:start}
 .rvlist .rq{font-size:.92rem}
+
+/* 해설 그림(data/figures.js) 색 규칙. style.css에 그대로 붙인다. 도형은 currentColor를 쓰므로 color만 바꾼다. */
+.fig{display:block;width:100%;height:auto;max-width:560px;color:var(--ink);font-family:var(--font)}
+.fig text{paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
+.fig text.nh{stroke:none}
+.fig .k-fg{color:var(--ink)}
+.fig .k-mu{color:var(--muted)}
+.fig .k-ln{color:var(--line-strong)}
+.fig .k-ac{color:var(--accent)}
+.fig .k-ok{color:var(--good)}
+.fig .k-bd{color:var(--bad)}
+.fig .k-wn{color:var(--warn)}
