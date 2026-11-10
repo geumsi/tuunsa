@@ -388,3 +388,7 @@ body.covered{overflow:hidden}
 .fig .k-ok{color:var(--good)}
 .fig .k-bd{color:var(--bad)}
 .fig .k-wn{color:var(--warn)}
+
+/* 공식 줄 아래 변수 풀이(vars) */
+.vleg{margin:2px 0 8px;font-size:.78rem;line-height:1.55;color:var(--muted);overflow-wrap:anywhere}
+li .vleg{margin:2px 0 4px}

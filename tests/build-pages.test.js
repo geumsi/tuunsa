@@ -133,3 +133,21 @@ test("정적 페이지 용어집 영역별 뜻: 영역 id로 고른다", () => {
   const f2 = build([{id:"s2_risk", subject:2, title:"리스크", questions:[Object.assign({}, q, {id:"s2_risk_001"})]}], cfg, opt(), {GLOSSARY:GL})["s2_risk/001.html"];
   assert.ok(!f2.includes('class="gloss"'));
 });
+
+test("정적 페이지: s3_deriv_008 해설 공식 줄 아래 F, S, r, d, t 풀이, 개념 칸에는 없음", () => {
+  const areas = loadData(), a = areas.find(x => x.id === "s3_deriv");
+  const q = Object.assign({}, a.questions.find(x => x.id === "s3_deriv_008"), {vars:{F:"선물 이론가격", S:"현물가격", r:"무위험이자율", d:"배당수익률", t:"잔존기간(연)"}});
+  const f = build([Object.assign({}, a, {questions:[q]})], cfg, opt(), {})["s3_deriv/008.html"];
+  const ex = f.slice(f.indexOf("<h3>해설</h3>"));
+  const m = ex.match(/× t<div class="vleg">([^<]*)<\/div>/);
+  assert.ok(m);
+  ["F: ", "S: ", "r: ", "d: ", "t: "].forEach(x => assert.ok(m[1].includes(x), x));
+  assert.ok(!f.slice(f.indexOf('class="concept"'), f.indexOf("<h3>해설</h3>")).includes("vleg"));
+  assert.ok(!f.slice(0, f.indexOf("<details>")).includes("vleg"), "문제·보기에는 없음");
+});
+test("정적 페이지 용어집 풀이는 화면 순서(개념 먼저)로 처음 나온 곳에 붙는다", () => {
+  const q = Object.assign({}, mc, {id:"s1_tax_011", concept:"VaR 개념", memo:["VaR 암기"], explain:"설명"});
+  const f = build(area([q]), cfg, opt(), {GLOSSARY:{VaR:{full:"Value at Risk"}}})["s1_tax/011.html"];
+  const i = f.indexOf('class="gloss"');
+  assert.ok(i > f.indexOf('class="concept"') && i < f.indexOf('class="memo"'));
+});

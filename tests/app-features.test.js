@@ -153,3 +153,33 @@ test("오답 분석: 오답노트와 개수 기준을 한 줄로 설명하고 �
   // last 0인 기록 3개(오답노트), w>0인 기록 4개(오답 분석)
   assert.ok(text(app.view()).includes("오답노트는 최근에 틀린 문제 기준(3문제), 오답 분석은 누적으로 틀린 횟수 기준(4문제)입니다."));
 });
+
+// s3_deriv_008: 해설 "· F = S × [1 + (r − d) × t] → F − S = S × (r − d) × t" 아래에 F, S, r, d, t 모두
+const VARS8 = `const q8 = window.QUIZ_DATA.s3_deriv.questions.find(x => x.id === "s3_deriv_008");
+q8.vars = {F:"선물 이론가격", S:"현물가격", r:"무위험이자율", d:"배당수익률", t:"잔존기간(연)"};`;
+const sess8 = extra => JSON.stringify(Object.assign({mode:"area", title:"파생", i:0, ans:{}, startedAt:7, items:[{qid:"s3_deriv_008", order:[0,1,2,3]}]}, extra || {}));
+test("s3_deriv_008: 해설 공식 줄 아래에 F, S, r, d, t 풀이가 모두 나온다", () => {
+  const app = boot({"tuunsa-session": sess8()}, {beforeApp: VARS8});
+  startQuiz(app); app.key("p");
+  const v = app.view();
+  const ex = v.slice(v.indexOf("<h3>해설</h3>"));
+  const m = ex.match(/F = S × \[1 \+ \(r − d\) × t\] → F − S = S × \(r − d\) × t<div class="vleg">([^<]*)<\/div>/);
+  assert.ok(m, "공식 줄 바로 아래 범례");
+  ["F: 선물 이론가격", "S: 현물가격", "r: 무위험이자율", "d: 배당수익률", "t: 잔존기간(연)"].forEach(x => assert.ok(m[1].includes(x), x));
+  const concept = v.slice(v.indexOf('class="concept"'), v.indexOf("<h3>해설</h3>"));
+  assert.ok(!concept.includes("vleg"), "개념 칸에는 붙이지 않음");
+  assert.ok(!v.slice(0, v.indexOf('class="explain"')).includes("vleg"), "문제 본문과 보기에는 붙이지 않음");
+});
+test("보기 표시가 공식이면 보기별 해설 첫 줄 아래에 붙인다", () => {
+  const app = boot({"tuunsa-session": sess8()}, {beforeApp: VARS8 + `q8.choices = q8.choices.slice(); q8.choices[1] = "F − S = S × (r − d) × t";`});
+  startQuiz(app); app.key("p");
+  const v = app.view(), notes = v.slice(v.indexOf('class="cnotes"'));
+  assert.ok(/<span class="ctext">F − S = S × \(r − d\) × t<\/span>(<span[^>]*>[^<]*<\/span>)?<\/div><div class="vleg">F: 선물 이론가격/.test(notes));
+  const choicesArea = v.slice(0, v.indexOf('class="explain"'));
+  assert.ok(!choicesArea.includes("vleg"));
+});
+test("vars가 없으면 해설 화면이 이전과 같다(범례 없음)", () => {
+  const app = boot({"tuunsa-session": sess8()}, {beforeApp: `delete window.QUIZ_DATA.s3_deriv.questions.find(x => x.id === "s3_deriv_008").vars;`});
+  startQuiz(app); app.key("p");
+  assert.ok(!app.view().includes("vleg"));
+});

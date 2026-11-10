@@ -50,30 +50,35 @@ let CUR = null;   // 업무모드·다른 탭 기록이 바뀔 때 다시 그릴
 /* ---------- helpers ---------- */
 const $view = document.getElementById("view");
 const kbd = s => esc(s).replace(/`([^`]+)`/g, '<kbd>$1</kbd>');
-const calcHtml = q => !q.calc ? "" : `<div class="calc"><h3>계산기 꿀팁</h3>
-  ${q.calc.formula ? `<p class="formula">${esc(q.calc.formula)}</p>` : ""}
-  ${Array.isArray(q.calc.steps) && q.calc.steps.length ? `<h4>일반 계산기</h4><ol class="keys">${q.calc.steps.map(t => `<li>${kbd(t)}</li>`).join("")}</ol>` : ""}
-  ${q.calc.sci ? `<h4>공학용 계산기 <span class="muted">fx-570 계열</span></h4><p class="keys1">${kbd(q.calc.sci)}</p>` : ""}
-  ${q.calc.tip ? `<p class="tip"><b>꿀팁</b> ${kbd(q.calc.tip)}</p>` : ""}
-  <a class="calclink" href="#calculator">계산기 사용법 자세히 보기 →</a></div>`;
+// v: 변수 풀이(render.js makeVars의 section). 계산기 꿀팁 상자 전체가 한 섹션이다.
+const calcHtml = (q, v) => { const leg = t => v ? v.line(t) : ""; return !q.calc ? "" : `<div class="calc"><h3>계산기 꿀팁</h3>
+  ${q.calc.formula ? `<p class="formula">${esc(q.calc.formula)}</p>${leg(q.calc.formula)}` : ""}
+  ${Array.isArray(q.calc.steps) && q.calc.steps.length ? `<h4>일반 계산기</h4><ol class="keys">${q.calc.steps.map(t => `<li>${kbd(t)}${leg(t)}</li>`).join("")}</ol>` : ""}
+  ${q.calc.sci ? `<h4>공학용 계산기 <span class="muted">fx-570 계열</span></h4><p class="keys1">${kbd(q.calc.sci)}</p>${leg(q.calc.sci)}` : ""}
+  ${q.calc.tip ? `<p class="tip"><b>꿀팁</b> ${kbd(q.calc.tip)}</p>${leg(q.calc.tip)}` : ""}
+  <a class="calclink" href="#calculator">계산기 사용법 자세히 보기 →</a></div>`; };
 // "· " 글머리표, "$ " 공식 줄, 용어집 풀이(g)는 render.js가 처리한다.
-const rich = (t, g) => R.rich(t, g);
-const memoHtml = (q, g) => Array.isArray(q.memo) && q.memo.length ? `<div class="memo"><h3>암기</h3><ul>${q.memo.map(m => `<li>${(g || R.NOGLOSS).text(esc(m))}</li>`).join("")}</ul></div>` : "";
+const rich = (t, g, v) => R.rich(t, g, v);
+const memoHtml = (q, g, v) => Array.isArray(q.memo) && q.memo.length ? `<div class="memo"><h3>암기</h3><ul>${q.memo.map(m => `<li>${(g || R.NOGLOSS).text(esc(m))}${v ? v.line(m) : ""}</li>`).join("")}</ul></div>` : "";
 // 사례: real은 출처가 있는 실제 사례, example은 가상의 예시
-const caseHtml = (c, qid, g) => !c || !c.text ? "" : `<div class="case ${c.type === "real" ? "real" : "ex"}">
+const caseHtml = (c, qid, g, v) => !c || !c.text ? "" : `<div class="case ${c.type === "real" ? "real" : "ex"}">
   <p class="case-h"><span class="case-tag">${c.type === "real" ? `실제 사례${c.year ? ` · ${esc(c.year)}` : ""}` : "가상 사례"}</span>${c.title ? `<b>${esc(c.title)}</b>` : ""}</p>
-  ${rich(c.text, g)}${c.type === "real" && /^https:\/\//.test(c.src || "") ? `<a class="case-src" href="${esc(c.src)}" target="_blank" rel="noopener noreferrer">출처: ${esc(c.srcName || c.src.replace(/^https:\/\/(www\.)?/, "").split("/")[0])}</a>` : ""}${c.type === "real" && SITE ? `<p class="case-note">${SITE.caseNote(CFG, c, `문제 ${qid} · 사례 「${c.title || ""}」`)}</p>` : ""}</div>`;
-const practiceHtml = (q, g) => q.practice || q.case ? `<div class="practice"><h3>실무에서는</h3>${rich(q.practice, g)}${caseHtml(q.case, q.id, g)}</div>` : "";
-const notesHtml = (q, order, picked, g) => !Array.isArray(q.choiceNotes) ? "" : `<div class="cnotes"><h3>보기별 해설</h3>${order.map((orig, k) => {
-  const n = q.choiceNotes[orig] || {}, isAns = orig === q.answer;
+  ${rich(c.text, g, v)}${c.type === "real" && /^https:\/\//.test(c.src || "") ? `<a class="case-src" href="${esc(c.src)}" target="_blank" rel="noopener noreferrer">출처: ${esc(c.srcName || c.src.replace(/^https:\/\/(www\.)?/, "").split("/")[0])}</a>` : ""}${c.type === "real" && SITE ? `<p class="case-note">${SITE.caseNote(CFG, c, `문제 ${qid} · 사례 「${c.title || ""}」`)}</p>` : ""}</div>`;
+// X: makeVars(q.vars). 실무와 사례는 각각 한 섹션, 보기별 해설은 보기마다 한 섹션
+const practiceHtml = (q, g, X) => q.practice || q.case ? `<div class="practice"><h3>실무에서는</h3>${rich(q.practice, g, X && X.section())}${caseHtml(q.case, q.id, g, X && X.section())}</div>` : "";
+const notesHtml = (q, order, picked, g, X) => !Array.isArray(q.choiceNotes) ? "" : `<div class="cnotes"><h3>보기별 해설</h3>${order.map((orig, k) => {
+  const n = q.choiceNotes[orig] || {}, isAns = orig === q.answer, v = (X || R.NOVARS).section();
   const tag = isAns ? `<span class="ctag good">정답</span>` : (orig === picked ? `<span class="ctag bad">내 선택</span>` : "");
-  const row = (label, t) => t ? `<div class="crow"><b>${label}</b><div>${rich(t, g)}</div></div>` : "";
-  return `<div class="cnote${isAns ? " ans" : ""}"><div class="chead"><span class="n">${k+1}</span><span class="ctext">${esc(q.choices[orig])}</span>${tag}</div>${row("용어", n.term)}${row("이론", n.theory)}${row("실무", n.practice)}</div>`;
+  const row = (label, t) => t ? `<div class="crow"><b>${label}</b><div>${rich(t, g, v)}</div></div>` : "";
+  // 보기 표시가 공식이면 보기별 해설의 첫 줄(보기 머리) 아래에 변수 풀이
+  return `<div class="cnote${isAns ? " ans" : ""}"><div class="chead"><span class="n">${k+1}</span><span class="ctext">${esc(q.choices[orig])}</span>${tag}</div>${v.line(q.choices[orig])}${row("용어", n.term)}${row("이론", n.theory)}${row("실무", n.practice)}</div>`;
 }).join("")}</div>`;
 // 해설 영역. 용어집 풀이는 이 순서(개념, 해설, 암기, 실무, 사례, 보기별 해설)로 처음 나온 약어에만 붙는다.
+// 변수 풀이(vars)는 개념 칸 밖의 공식 줄 아래에 붙는다. vars 키는 용어집 풀이에서 뺀다(vars 우선).
 const explainBody = (q, order, picked, head, refLabel) => {
-  const g = R.makeGloss(GLOSS, q.area);   // 영역마다 뜻이 다른 약어는 이 문제의 영역으로 고른다
-  return `${R.conceptHtml(q, FIGS, g)}${head ? "<h3>해설</h3>" : ""}${rich(q.explain, g)}${memoHtml(q, g)}${calcHtml(q)}${practiceHtml(q, g)}${q.type === "mc" ? notesHtml(q, order, picked, g) : ""}${q.ref ? `<div class="ref">${esc(refLabel)} · ${esc(q.ref)}</div>` : ""}`;
+  const X = R.makeVars(q.vars);
+  const g = R.makeGloss(GLOSS, q.area, X.keys);   // 영역마다 뜻이 다른 약어는 이 문제의 영역으로 고른다
+  return `${R.conceptHtml(q, FIGS, g)}${head ? "<h3>해설</h3>" : ""}${rich(q.explain, g, X.section())}${memoHtml(q, g, X.section())}${calcHtml(q, X.section())}${practiceHtml(q, g, X)}${q.type === "mc" ? notesHtml(q, order, picked, g, X) : ""}${q.ref ? `<div class="ref">${esc(refLabel)} · ${esc(q.ref)}</div>` : ""}`;
 };
 // 광고 슬롯(ads.js). 업무모드·화면 가리기 중에는 그리지 않는다.
 const adHtml = name => ADS ? ADS.html(CFG, name, {work:WORK, cover:COVER}) : "";

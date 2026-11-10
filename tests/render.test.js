@@ -96,3 +96,40 @@ test("공식 상자: 가로로 넘칠 때 가장자리 그림자 단서(스크�
   const rule = css.slice(css.indexOf(".fx{"), css.indexOf("}", css.indexOf(".fx{")));
   assert.ok(/no-repeat local/.test(rule) && /no-repeat scroll/.test(rule) && /overflow-x:auto/.test(rule));
 });
+
+// 공식 줄 아래 변수 풀이(vars)
+const V8 = {F:"선물 이론가격", S:"현물가격", r:"무위험이자율", d:"배당수익률", t:"잔존기간(연)"};
+test("변수 풀이: 공식 줄 바로 아래, 기호가 처음 나오는 순서", () => {
+  const X = R.makeVars(V8);
+  const h = R.rich("설명 문장이다.\n· F = S × [1 + (r − d) × t] → F − S = S × (r − d) × t", null, X.section());
+  assert.ok(h.includes('× t<div class="vleg">F: 선물 이론가격 · S: 현물가격 · r: 무위험이자율 · d: 배당수익률 · t: 잔존기간(연)</div></li>'), h);
+  assert.ok(h.startsWith("<p>설명 문장이다.</p><ul>"), "공식 줄이 아니면 붙이지 않음");
+});
+test("변수 풀이: 영문·숫자 경계, 긴 키 먼저, 한글 옆 기호는 매칭", () => {
+  const v = R.makeVars({d:"배당", d1:"다음 기 배당", "D₀":"올해 배당", D:"배당 총액", r:"할인율", k:"요구수익률", g:"성장률"}).section();
+  assert.strictEqual(v.line("P = d1/(k − g)"), '<div class="vleg">d1: 다음 기 배당 · k: 요구수익률 · g: 성장률</div>');
+  assert.strictEqual(R.makeVars({r:"할인율", k:"요구수익률"}).section().line("rate = 3%, k보다 크다"), '<div class="vleg">k: 요구수익률</div>');
+  assert.strictEqual(R.makeVars({"D₀":"올해 배당", D:"배당 총액"}).section().line("D₁ = D₀ × (1+g)"), '<div class="vleg">D₀: 올해 배당</div>');
+  assert.strictEqual(R.makeVars({σ:"표준편차"}).section().line("VaR = 1.65 × σ²"), '<div class="vleg">σ: 표준편차</div>');
+});
+test("변수 풀이: 같은 섹션에서 이미 풀이한 기호는 다시 붙이지 않고, 남은 기호가 없으면 안 붙인다", () => {
+  const X = R.makeVars(V8), sec = X.section();
+  assert.ok(sec.line("F = S × t").includes("F: "));
+  assert.strictEqual(sec.line("F − S = S × t"), "");
+  assert.strictEqual(sec.line("F = S × (r − d)"), '<div class="vleg">r: 무위험이자율 · d: 배당수익률</div>');
+  assert.ok(X.section().line("F = S").includes("F: "), "새 섹션은 처음부터");
+});
+test("변수 풀이: 연산자가 없거나 vars가 없으면 그대로, 뜻은 이스케이프", () => {
+  assert.strictEqual(R.makeVars(V8).section().line("F와 S의 차이"), "");
+  assert.strictEqual(R.makeVars({}), R.NOVARS);
+  assert.strictEqual(R.makeVars(null).section().line("F = S"), "");
+  const t = "가격\n· F = S × t\n$ F = S";
+  assert.strictEqual(R.rich(t, null, R.makeVars(undefined).section()), R.rich(t), "vars 없는 문제는 지금과 같다");
+  assert.ok(R.makeVars({x:"<b>뜻</b>"}).section().line("y = x").includes("x: &lt;b&gt;뜻&lt;/b&gt;"));
+  assert.ok(R.rich("$ F = S × t", null, R.makeVars(V8).section()).includes('</div><div class="vleg">F: '), "해설의 $ 줄에도 붙음");
+});
+test("변수 풀이 키는 용어집 풀이에서 뺀다(vars 우선)", () => {
+  const g = R.makeGloss({VaR:{full:"Value at Risk"}, ES:{full:"Expected Shortfall"}}, "s2_risk", ["VaR"]);
+  const h = g.text("VaR와 ES");
+  assert.ok(!h.includes("Value at Risk") && h.includes("Expected Shortfall"));
+});

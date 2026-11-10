@@ -18,9 +18,10 @@ function entryOf(G, k, area){
   if(e.byArea && typeof e.byArea === "object") return typeof area === "string" && own(e.byArea, area) && hasText(e.byArea[area]) ? e.byArea[area] : null;
   return hasText(e) ? e : null;
 }
-function makeGloss(G, area){
-  const E = {};
-  if(G && typeof G === "object") Object.keys(G).forEach(k => { const e = k.trim() ? entryOf(G, k, area) : null; if(e) E[k] = e; });
+// exclude: 이 문제의 vars 키. 변수 풀이가 우선이라 용어집 풀이를 붙이지 않는다.
+function makeGloss(G, area, exclude){
+  const E = {}, ex = Array.isArray(exclude) ? exclude : [];
+  if(G && typeof G === "object") Object.keys(G).forEach(k => { const e = k.trim() && ex.indexOf(k) < 0 ? entryOf(G, k, area) : null; if(e) E[k] = e; });
   const keys = Object.keys(E);
   if(!keys.length) return NOGLOSS;
   const byEsc = {};
@@ -43,9 +44,42 @@ function makeGloss(G, area){
   return {text};
 }
 
+// 공식 줄의 변수 풀이. vars = {기호: 뜻}. 개념 칸 밖의 줄 중 공식 줄(=, ×, ÷, /, √, Σ, → 중 하나가 있고
+// vars 키가 기호로 하나 이상 나오는 줄) 바로 아래에 "F: 선물 이론가격 · S: 현물가격"을 작게 붙인다.
+// 기호는 줄에 처음 나오는 순서, 영문·숫자·아래첨자 경계 기준(d1·D₁ 안의 d·D, rate 안의 r은 아님, k보다의 k는 맞음), 긴 키부터 매칭.
+// section()마다(해설 하나, 보기 하나 등) 이미 풀이한 기호는 다시 붙이지 않는다. vars가 없으면 아무것도 붙이지 않는다.
+const FORMULA_OP = /[=×÷/√Σ→]/;
+const NOVARS = {keys: [], section: () => ({line: () => ""})};
+function makeVars(vars){
+  const keys = vars && typeof vars === "object" && !Array.isArray(vars)
+    ? Object.keys(vars).filter(k => k.trim() && typeof vars[k] === "string" && vars[k].trim()).sort((a, b) => b.length - a.length) : [];
+  if(!keys.length) return NOVARS;
+  // 아래첨자(₀~₉, ₐ 등)와 _는 기호의 일부로 본다(D₁ 안의 D는 D가 아님). 위첨자(², ³)는 거듭제곱이라 경계로 본다.
+  const isW = c => !!c && /[A-Za-z0-9_\u2080-\u209C\u1D62-\u1D6A]/.test(c);
+  const symbols = line => {
+    const found = [];
+    for(let i = 0; i < line.length;){
+      const k = keys.find(x => line.startsWith(x, i) && !isW(line[i - 1]) && !isW(line[i + x.length]));
+      if(k){ if(found.indexOf(k) < 0) found.push(k); i += k.length; } else i++;
+    }
+    return found;
+  };
+  return {keys, section(){
+    const done = new Set();
+    return {line(raw){
+      const t = String(raw == null ? "" : raw);
+      if(!FORMULA_OP.test(t)) return "";
+      const left = symbols(t).filter(k => !done.has(k));
+      left.forEach(k => done.add(k));
+      return left.length ? `<div class="vleg">${left.map(k => `${esc(k)}: ${esc(vars[k].trim())}`).join(" · ")}</div>` : "";
+    }};
+  }};
+}
+
 // "· "로 시작하는 줄은 글머리표 목록, "$ "로 시작하는 줄은 공식 상자, 나머지 줄은 문단.
-function rich(t, gloss){
-  const g = gloss || NOGLOSS;
+// v: makeVars(...).section(). 주면 공식 줄 아래에 변수 풀이를 붙인다(개념 칸에는 주지 않는다).
+function rich(t, gloss, v){
+  const g = gloss || NOGLOSS, leg = line => v ? v.line(line) : "";
   return String(t || "").split("\n").reduce((acc, line) => {
     const li = /^·\s*/.test(line), last = acc[acc.length - 1];
     if(/^\$ /.test(line)) acc.push({fx:true, text:line.slice(2)});
@@ -53,9 +87,9 @@ function rich(t, gloss){
     else if(li) acc.push({ul:true, items:[line.replace(/^·\s*/, "")]});
     else if(line.trim()) acc.push({text:line});
     return acc;
-  }, []).map(b => b.fx ? `<div class="fx">${esc(b.text)}</div>`
-    : b.ul ? `<ul>${b.items.map(i => `<li>${g.text(esc(i))}</li>`).join("")}</ul>`
-    : `<p>${g.text(esc(b.text))}</p>`).join("");
+  }, []).map(b => b.fx ? `<div class="fx">${esc(b.text)}</div>${leg(b.text)}`
+    : b.ul ? `<ul>${b.items.map(i => `<li>${g.text(esc(i))}${leg(i)}</li>`).join("")}</ul>`
+    : `<p>${g.text(esc(b.text))}</p>${leg(b.text)}`).join("");
 }
 
 // 그림 SVG는 저장소 파일이라 신뢰하지만, 허용 목록(디자인팀과 맞춘 요소·속성)에 있는 것만 남긴다.
@@ -104,7 +138,7 @@ function conceptHtml(q, FIG, gloss){
   const c = typeof q.concept === "string" && q.concept.trim() ? `<div class="concept"><h3>개념</h3>${rich(q.concept, gloss)}</div>` : "";
   return c + figHtml(q.fig, FIG);
 }
-const api = {esc, rich, makeGloss, sanitizeSvg, figHtml, conceptHtml, NOGLOSS};
+const api = {esc, rich, makeVars, NOVARS, makeGloss, sanitizeSvg, figHtml, conceptHtml, NOGLOSS};
 root.TuunsaRender = api;
 if(typeof module === "object" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

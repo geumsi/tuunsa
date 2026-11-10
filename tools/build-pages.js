@@ -16,7 +16,7 @@ const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp
 const ld = o => JSON.stringify(o).replace(/</g, "\\u003c");
 const cut = (s, n) => { s = String(s || "").replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
 // 해설 글: 앱과 같은 render.js 규칙("· " 글머리표, "$ " 공식 줄, 용어집 풀이)
-const rich = (t, g) => R.rich(t, g);
+const rich = (t, g, v) => R.rich(t, g, v);
 const kbd = s => esc(s).replace(/`([^`]+)`/g, "<kbd>$1</kbd>");
 
 function parseArgs(argv){
@@ -92,18 +92,23 @@ ${ad ? adJs(up) + "\n" : ""}</body>
 
 // 앱과 같은 순서(개념·그림, 해설, 암기, 계산기, 실무, 사례, 보기별 해설)로 그리고, 용어집 풀이도 이 순서로 처음 나온 약어에만 붙인다.
 function explainHtml(cfg, q, url, extras, areaId){
-  const x = extras || {}, g = R.makeGloss(x.GLOSSARY, q.area || areaId);
-  const memo = Array.isArray(q.memo) && q.memo.length ? `<div class="memo"><h3>암기</h3><ul>${q.memo.map(m => `<li>${g.text(esc(m))}</li>`).join("")}</ul></div>` : "";
-  const c = q.calc ? `<div class="calc"><h3>계산기 꿀팁</h3>${q.calc.formula ? `<p class="formula">${esc(q.calc.formula)}</p>` : ""}${Array.isArray(q.calc.steps) && q.calc.steps.length ? `<h4>일반 계산기</h4><ol class="keys">${q.calc.steps.map(t => `<li>${kbd(t)}</li>`).join("")}</ol>` : ""}${q.calc.sci ? `<h4>공학용 계산기</h4><p class="keys1">${kbd(q.calc.sci)}</p>` : ""}${q.calc.tip ? `<p class="tip"><b>꿀팁</b> ${kbd(q.calc.tip)}</p>` : ""}</div>` : "";
-  const real = q.case && q.case.type === "real";
-  const cs = q.case && q.case.text ? `<div class="case ${real ? "real" : "ex"}"><p class="case-h"><span class="case-tag">${real ? `실제 사례${q.case.year ? ` · ${esc(q.case.year)}` : ""}` : "가상 사례"}</span>${q.case.title ? `<b>${esc(q.case.title)}</b>` : ""}</p>${rich(q.case.text, g)}${real && /^https:\/\//.test(q.case.src || "") ? `<a class="case-src" href="${esc(q.case.src)}" rel="noopener nofollow">출처: ${esc(q.case.srcName || q.case.src.replace(/^https:\/\/(www\.)?/, "").split("/")[0])}</a>` : ""}${real ? `<p class="case-note">${SITE.caseNote(cfg, q.case, `${url} · 사례 「${q.case.title || ""}」`)}</p>` : ""}</div>` : "";
-  const pr = q.practice || cs ? `<div class="practice"><h3>실무에서는</h3>${rich(q.practice, g)}${cs}</div>` : "";
-  const notes = q.type === "mc" && Array.isArray(q.choiceNotes) ? `<div class="cnotes"><h3>보기별 해설</h3>${q.choices.map((ch, k) => {
-    const n = q.choiceNotes[k] || {}, row = (l, t) => t ? `<div class="crow"><b>${l}</b><div>${rich(t, g)}</div></div>` : "";
-    return `<div class="cnote${k === q.answer ? " ans" : ""}"><div class="chead"><span class="n">${k + 1}</span><span class="ctext">${esc(ch)}</span>${k === q.answer ? `<span class="ctag good">정답</span>` : ""}</div>${row("용어", n.term)}${row("이론", n.theory)}${row("실무", n.practice)}</div>`;
-  }).join("")}</div>` : "";
+  // 용어집 풀이는 처음 나온 곳에만 붙으므로 화면 순서대로 만든다. 변수 풀이(vars)는 섹션마다 따로 센다.
+  const x = extras || {}, X = R.makeVars(q.vars), g = R.makeGloss(x.GLOSSARY, q.area || areaId, X.keys);
   const head = R.conceptHtml(q, x.FIGURES, g);
-  return `<div class="explain"><p><b>정답 ${esc(ansText(q))}</b></p>${head}<h3>해설</h3>${rich(q.explain, g)}${memo}${c}${pr}${notes}${q.ref ? `<div class="ref">참고 단원 · ${esc(q.ref)}</div>` : ""}</div>`;
+  const ex = rich(q.explain, g, X.section());
+  const vm = X.section();
+  const memo = Array.isArray(q.memo) && q.memo.length ? `<div class="memo"><h3>암기</h3><ul>${q.memo.map(m => `<li>${g.text(esc(m))}${vm.line(m)}</li>`).join("")}</ul></div>` : "";
+  const vc = X.section();
+  const c = q.calc ? `<div class="calc"><h3>계산기 꿀팁</h3>${q.calc.formula ? `<p class="formula">${esc(q.calc.formula)}</p>${vc.line(q.calc.formula)}` : ""}${Array.isArray(q.calc.steps) && q.calc.steps.length ? `<h4>일반 계산기</h4><ol class="keys">${q.calc.steps.map(t => `<li>${kbd(t)}${vc.line(t)}</li>`).join("")}</ol>` : ""}${q.calc.sci ? `<h4>공학용 계산기</h4><p class="keys1">${kbd(q.calc.sci)}</p>${vc.line(q.calc.sci)}` : ""}${q.calc.tip ? `<p class="tip"><b>꿀팁</b> ${kbd(q.calc.tip)}</p>${vc.line(q.calc.tip)}` : ""}</div>` : "";
+  const prText = rich(q.practice, g, X.section());
+  const real = q.case && q.case.type === "real";
+  const cs = q.case && q.case.text ? `<div class="case ${real ? "real" : "ex"}"><p class="case-h"><span class="case-tag">${real ? `실제 사례${q.case.year ? ` · ${esc(q.case.year)}` : ""}` : "가상 사례"}</span>${q.case.title ? `<b>${esc(q.case.title)}</b>` : ""}</p>${rich(q.case.text, g, X.section())}${real && /^https:\/\//.test(q.case.src || "") ? `<a class="case-src" href="${esc(q.case.src)}" rel="noopener nofollow">출처: ${esc(q.case.srcName || q.case.src.replace(/^https:\/\/(www\.)?/, "").split("/")[0])}</a>` : ""}${real ? `<p class="case-note">${SITE.caseNote(cfg, q.case, `${url} · 사례 「${q.case.title || ""}」`)}</p>` : ""}</div>` : "";
+  const pr = q.practice || cs ? `<div class="practice"><h3>실무에서는</h3>${prText}${cs}</div>` : "";
+  const notes = q.type === "mc" && Array.isArray(q.choiceNotes) ? `<div class="cnotes"><h3>보기별 해설</h3>${q.choices.map((ch, k) => {
+    const n = q.choiceNotes[k] || {}, v = X.section(), row = (l, t) => t ? `<div class="crow"><b>${l}</b><div>${rich(t, g, v)}</div></div>` : "";
+    return `<div class="cnote${k === q.answer ? " ans" : ""}"><div class="chead"><span class="n">${k + 1}</span><span class="ctext">${esc(ch)}</span>${k === q.answer ? `<span class="ctag good">정답</span>` : ""}</div>${v.line(ch)}${row("용어", n.term)}${row("이론", n.theory)}${row("실무", n.practice)}</div>`;
+  }).join("")}</div>` : "";
+  return `<div class="explain"><p><b>정답 ${esc(ansText(q))}</b></p>${head}<h3>해설</h3>${ex}${memo}${c}${pr}${notes}${q.ref ? `<div class="ref">참고 단원 · ${esc(q.ref)}</div>` : ""}</div>`;
 }
 // 실명 사례가 있는 페이지는 title·description·og에 회사명을 넣지 않는다(법률팀 R12). 사례 본문은 그대로 둔다.
 // 회사명을 따로 표시한 데이터가 없으므로, 사례 제목의 낱말(2자 이상)이 문제 글에 하나라도 있으면 문제 글 대신 영역명으로 메타를 만든다.
