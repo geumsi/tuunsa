@@ -1,0 +1,11 @@
+/* 해설 그림(data/figures.js) 색 규칙. style.css에 그대로 붙인다. 도형은 currentColor를 쓰므로 color만 바꾼다. */
+.fig{display:block;width:100%;height:auto;max-width:560px;color:var(--ink);font-family:var(--font)}
+.fig text{paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
+.fig text.nh{stroke:none}
+.fig .k-fg{color:var(--ink)}
+.fig .k-mu{color:var(--muted)}
+.fig .k-ln{color:var(--line-strong)}
+.fig .k-ac{color:var(--accent)}
+.fig .k-ok{color:var(--good)}
+.fig .k-bd{color:var(--bad)}
+.fig .k-wn{color:var(--warn)}
