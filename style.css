@@ -348,6 +348,13 @@ body.covered{overflow:hidden}
 .fx{margin:8px 0;padding:8px 10px;border-radius:8px;background:var(--surface);font:600 .92rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;text-align:center;white-space:pre;overflow-x:auto}
 .figbox{margin:0 0 12px;padding:10px;border-radius:10px;background:var(--surface);border:1px solid var(--line);color:var(--fg)}
 .fig-svg{overflow-x:auto}
+/* 좁은 화면: 그림 글자가 12px 이상이려면 그림 폭이 300px 이상이어야 한다(viewBox 340, 글자 13~16 단위).
+   360px 화면에서 좌우 여백 합이 60px 이하가 되도록 그림을 카드 안쪽 끝까지 넓힌다(카드 여백 + 해설 여백만큼) */
+@media (max-width:480px){
+  .figbox{--bleed:32px;margin-left:calc(-1 * var(--bleed));margin-right:calc(-1 * var(--bleed));padding:8px 0;border-left:0;border-right:0;border-radius:0}
+  .witem .figbox{--bleed:28px}
+  .figbox figcaption{padding:0 12px}
+}
 .fig-svg svg{display:block;max-width:100%;height:auto;margin:0 auto}
 .figbox figcaption{margin-top:6px;font-size:.8rem;color:var(--muted)}
 .gloss{font-size:.75em;color:var(--muted);margin-left:1px}
