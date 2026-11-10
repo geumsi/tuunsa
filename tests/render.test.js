@@ -133,3 +133,17 @@ test("변수 풀이 키는 용어집 풀이에서 뺀다(vars 우선)", () => {
   const h = g.text("VaR와 ES");
   assert.ok(!h.includes("Value at Risk") && h.includes("Expected Shortfall"));
 });
+
+test("공식 범례에 용어집 약어도 넣는다(ko만, byArea 규칙, vars 우선)", () => {
+  const GL = {EL:{full:"Expected Loss", ko:"예상손실"}, EAD:{full:"Exposure At Default", ko:"부도시 익스포저"},
+    LGD:{full:"Loss Given Default", ko:"부도시 손실률"}, PD:{byArea:{s2_risk:{full:"Probability of Default", ko:"부도확률"}, s3_bond:{ko:"국고채전문딜러"}}},
+    NAV:{full:"Net Asset Value"}};
+  const line = "예상손실(EL) = EAD × PD × LGD";
+  assert.strictEqual(R.makeVars(null, GL, "s2_risk").section().line(line),
+    '<div class="vleg">EL: 예상손실 · EAD: 부도시 익스포저 · PD: 부도확률 · LGD: 부도시 손실률</div>');
+  assert.strictEqual(R.makeVars(null, GL, "s1_tax").section().line(line), '<div class="vleg">EL: 예상손실 · EAD: 부도시 익스포저 · LGD: 부도시 손실률</div>', "영역에 없는 byArea 약어는 뺀다");
+  assert.ok(R.makeVars({EL:"기대손실(직접 정의)"}, GL, "s2_risk").section().line(line).includes("EL: 기대손실(직접 정의)"), "vars 우선");
+  assert.ok(R.makeVars(null, GL).section().line("NAV = 순자산 / 좌수").includes("NAV: Net Asset Value"), "ko가 없으면 full");
+  assert.deepStrictEqual(R.makeVars({F:"x"}, GL, "s2_risk").keys, ["F"], "용어집 풀이에서 뺄 키는 vars 키만");
+  assert.strictEqual(R.makeVars(null, GL, "s2_risk").section().line("EL은 평균 손실"), "", "연산자 없는 줄은 그대로");
+});

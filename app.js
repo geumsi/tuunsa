@@ -76,7 +76,7 @@ const notesHtml = (q, order, picked, g, X) => !Array.isArray(q.choiceNotes) ? ""
 // 해설 영역. 용어집 풀이는 이 순서(개념, 해설, 암기, 실무, 사례, 보기별 해설)로 처음 나온 약어에만 붙는다.
 // 변수 풀이(vars)는 개념 칸 밖의 공식 줄 아래에 붙는다. vars 키는 용어집 풀이에서 뺀다(vars 우선).
 const explainBody = (q, order, picked, head, refLabel) => {
-  const X = R.makeVars(q.vars);
+  const X = R.makeVars(q.vars, GLOSS, q.area);   // 공식 줄 범례: vars 기호와 용어집 약어(vars 우선)
   const g = R.makeGloss(GLOSS, q.area, X.keys);   // 영역마다 뜻이 다른 약어는 이 문제의 영역으로 고른다
   return `${R.conceptHtml(q, FIGS, g)}${head ? "<h3>해설</h3>" : ""}${rich(q.explain, g, X.section())}${memoHtml(q, g, X.section())}${calcHtml(q, X.section())}${practiceHtml(q, g, X)}${q.type === "mc" ? notesHtml(q, order, picked, g, X) : ""}${q.ref ? `<div class="ref">${esc(refLabel)} · ${esc(q.ref)}</div>` : ""}`;
 };

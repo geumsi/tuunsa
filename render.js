@@ -48,11 +48,22 @@ function makeGloss(G, area, exclude){
 // vars 키가 기호로 하나 이상 나오는 줄) 바로 아래에 "F: 선물 이론가격 · S: 현물가격"을 작게 붙인다.
 // 기호는 줄에 처음 나오는 순서, 영문·숫자·아래첨자 경계 기준(d1·D₁ 안의 d·D, rate 안의 r은 아님, k보다의 k는 맞음), 긴 키부터 매칭.
 // section()마다(해설 하나, 보기 하나 등) 이미 풀이한 기호는 다시 붙이지 않는다. vars가 없으면 아무것도 붙이지 않는다.
+// 용어집(G) 약어도 범례에 넣는다(ko만, ko가 없으면 full). 영역마다 뜻이 다른 약어는 area로 고른다. vars가 우선이다.
+// 반환값 keys는 vars 키만이다(용어집 풀이에서 뺄 키).
 const FORMULA_OP = /[=×÷/√Σ→]/;
 const NOVARS = {keys: [], section: () => ({line: () => ""})};
-function makeVars(vars){
-  const keys = vars && typeof vars === "object" && !Array.isArray(vars)
-    ? Object.keys(vars).filter(k => k.trim() && typeof vars[k] === "string" && vars[k].trim()).sort((a, b) => b.length - a.length) : [];
+function makeVars(vars, G, area){
+  const vkeys = vars && typeof vars === "object" && !Array.isArray(vars)
+    ? Object.keys(vars).filter(k => k.trim() && typeof vars[k] === "string" && vars[k].trim()) : [];
+  const meaning = {};
+  vkeys.forEach(k => { meaning[k] = vars[k].trim(); });
+  if(G && typeof G === "object") Object.keys(G).forEach(k => {
+    if(!k.trim() || own(meaning, k)) return;
+    const e = entryOf(G, k, area);
+    const m = e && [e.ko, e.full].find(x => typeof x === "string" && x.trim());
+    if(m) meaning[k] = m.trim();
+  });
+  const keys = Object.keys(meaning).sort((a, b) => b.length - a.length);
   if(!keys.length) return NOVARS;
   // 아래첨자(₀~₉, ₐ 등)와 _는 기호의 일부로 본다(D₁ 안의 D는 D가 아님). 위첨자(², ³)는 거듭제곱이라 경계로 본다.
   const isW = c => !!c && /[A-Za-z0-9_\u2080-\u209C\u1D62-\u1D6A]/.test(c);
@@ -64,14 +75,14 @@ function makeVars(vars){
     }
     return found;
   };
-  return {keys, section(){
+  return {keys: vkeys, section(){
     const done = new Set();
     return {line(raw){
       const t = String(raw == null ? "" : raw);
       if(!FORMULA_OP.test(t)) return "";
       const left = symbols(t).filter(k => !done.has(k));
       left.forEach(k => done.add(k));
-      return left.length ? `<div class="vleg">${left.map(k => `${esc(k)}: ${esc(vars[k].trim())}`).join(" · ")}</div>` : "";
+      return left.length ? `<div class="vleg">${left.map(k => `${esc(k)}: ${esc(meaning[k])}`).join(" · ")}</div>` : "";
     }};
   }};
 }

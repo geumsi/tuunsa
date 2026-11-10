@@ -183,3 +183,20 @@ test("vars가 없으면 해설 화면이 이전과 같다(범례 없음)", () =>
   startQuiz(app); app.key("p");
   assert.ok(!app.view().includes("vleg"));
 });
+
+// 실제 데이터와 실제 용어집(data/glossary.js)으로 확인
+const sessQ = qid => JSON.stringify({mode:"area", title:"t", i:0, ans:{}, startedAt:7, items:[{qid, order:[0,1,2,3]}]});
+test("s2_risk_033 암기 'EL = EAD × PD × LGD' 아래에 EL·EAD·PD·LGD 뜻(PD는 리스크관리 뜻)", () => {
+  const app = boot({"tuunsa-session": sessQ("s2_risk_033")});
+  startQuiz(app); app.key("p");
+  const v = app.view(), memo = v.slice(v.indexOf('class="memo"'));
+  const m = memo.match(/예상손실\(EL\) = EAD × PD × LGD<div class="vleg">([^<]*)<\/div>/);
+  assert.ok(m, "공식 줄 바로 아래 범례");
+  ["EL: 예상손실", "EAD: 부도시 익스포저", "PD: 부도확률", "LGD: 부도시 손실률"].forEach(x => assert.ok(m[1].includes(x), x + " / " + m[1]));
+});
+test("s1_realestate_008 암기 'DSCR = 순운용소득 / 부채상환액' 아래에 DSCR 뜻", () => {
+  const app = boot({"tuunsa-session": sessQ("s1_realestate_008")});
+  startQuiz(app); app.key("p");
+  const v = app.view();
+  assert.ok(/DSCR = 순운용소득 \/ 부채상환액<div class="vleg">DSCR: 부채상환비율\(부채감당률\)<\/div>/.test(v));
+});

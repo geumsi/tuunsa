@@ -93,7 +93,7 @@ ${ad ? adJs(up) + "\n" : ""}</body>
 // 앱과 같은 순서(개념·그림, 해설, 암기, 계산기, 실무, 사례, 보기별 해설)로 그리고, 용어집 풀이도 이 순서로 처음 나온 약어에만 붙인다.
 function explainHtml(cfg, q, url, extras, areaId){
   // 용어집 풀이는 처음 나온 곳에만 붙으므로 화면 순서대로 만든다. 변수 풀이(vars)는 섹션마다 따로 센다.
-  const x = extras || {}, X = R.makeVars(q.vars), g = R.makeGloss(x.GLOSSARY, q.area || areaId, X.keys);
+  const x = extras || {}, X = R.makeVars(q.vars, x.GLOSSARY, q.area || areaId), g = R.makeGloss(x.GLOSSARY, q.area || areaId, X.keys);
   const head = R.conceptHtml(q, x.FIGURES, g);
   const ex = rich(q.explain, g, X.section());
   const vm = X.section();

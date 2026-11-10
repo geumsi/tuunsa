@@ -151,3 +151,11 @@ test("정적 페이지 용어집 풀이는 화면 순서(개념 먼저)로 처�
   const i = f.indexOf('class="gloss"');
   assert.ok(i > f.indexOf('class="concept"') && i < f.indexOf('class="memo"'));
 });
+
+test("정적 페이지(실제 데이터·용어집): EL 공식과 DSCR 공식 아래 약어 범례", () => {
+  const files = build(loadData(), loadConfig(), opt(), require("../tools/lib.js").loadExtras());
+  const el = files["s2_risk/033.html"], ds = files["s1_realestate/008.html"];
+  const m = el.match(/예상손실\(EL\) = EAD × PD × LGD<div class="vleg">([^<]*)<\/div>/);
+  assert.ok(m && ["EL: 예상손실", "EAD: ", "PD: 부도확률", "LGD: "].every(x => m[1].includes(x)), m && m[1]);
+  assert.ok(/DSCR = 순운용소득 \/ 부채상환액<div class="vleg">DSCR: [^<]+<\/div>/.test(ds));
+});
