@@ -50,7 +50,7 @@ function boot(store, opt){
   return {
     els, store, ctx,
     view: () => els.view.innerHTML,
-    key: k => (docL.keydown || []).forEach(fn => fn({key: k, preventDefault(){}, target: {}})),
+    key: (k, code) => (docL.keydown || []).forEach(fn => fn({key: k, code: code || "", preventDefault(){}, target: {}})),
     go: hash => { win.location.hash = hash; (winL.hashchange || []).forEach(fn => fn({})); },
     stats: () => JSON.parse(store["tuunsa-stats"] || "{}")
   };

@@ -105,3 +105,10 @@ test("세션: 패스(-1) 답과 찍어서 맞음 표시(guess)", () => {
   assert.deepStrictEqual(s.guess, {0:true});
   assert.strictEqual(V.session(Object.assign(clone(good), {ans:{0:-2}}), has, isMc), null);
 });
+test("세션 passUndo: 그 문항이 패스 상태이고 기록 형식이 맞을 때만", () => {
+  const base = Object.assign(clone(good), {i:1, ans:{0:-1}});
+  assert.deepStrictEqual(V.session(Object.assign({}, base, {passUndo:{i:0, prev:{c:1, w:0, last:1, t:2}}}), has, isMc).passUndo, {i:0, prev:{c:1, w:0, last:1, t:2}});
+  assert.deepStrictEqual(V.session(Object.assign({}, base, {passUndo:{i:0, prev:null}}), has, isMc).passUndo, {i:0, prev:null});
+  assert.strictEqual(V.session(Object.assign({}, base, {passUndo:{i:0, prev:{c:"<x>"}}}), has, isMc).passUndo, undefined);
+  assert.strictEqual(V.session(Object.assign({}, base, {ans:{0:2}, passUndo:{i:0, prev:null}}), has, isMc).passUndo, undefined);
+});

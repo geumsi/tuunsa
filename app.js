@@ -284,6 +284,7 @@ function renderQuiz(){
       <p class="qtext">${esc(q.q)}</p>
       ${body}
       ${done ? "" : `<button class="btn block passbtn" id="pass">모르겠어요 (패스)</button>`}
+      ${passed && S.passUndo && S.passUndo.i === S.i ? `<button class="btn block passbtn" id="unpass">패스 취소하고 다시 고르기</button>` : ""}
       ${verdict}
     </article>
     <div class="qnav">
@@ -296,7 +297,8 @@ function renderQuiz(){
   const pb = document.getElementById("pass"); if(pb) pb.onclick = () => answer(PASS);
   const gb = document.getElementById("guess"); if(gb) gb.onchange = e => setGuess(e.target.checked);
   document.getElementById("next").onclick = next;
-  document.getElementById("prev").onclick = () => { if(S.i){ S.i--; save(K.sess, S); renderQuiz(); } };
+  document.getElementById("prev").onclick = () => { if(S.i){ delete S.passUndo; S.i--; save(K.sess, S); renderQuiz(); } };
+  const ub = document.getElementById("unpass"); if(ub) ub.onclick = undoPass;
   document.getElementById("quit").onclick = () => {
     if(!answered){ S = null; localStorage.removeItem(K.sess); renderHome(); return; }
     S.total = S.total || S.items.length;   // 원래 문항 수. 모의고사 중간 채점 판정에 쓴다
@@ -312,6 +314,8 @@ function answer(v){
   const q = Q[S.items[S.i].qid];
   S.ans[S.i] = v;
   const ok = v === q.answer, pass = v === PASS;
+  // 패스 취소에 쓰려고 패스 전 기록을 세션에 둔다. 다음 문제로 넘어가면 지운다
+  if(pass) S.passUndo = {i: S.i, prev: STATS[q.id] ? Object.assign({}, STATS[q.id]) : null};
   // 다른 탭이 쓴 기록과 합친 뒤 이 문제 기록만 고쳐 쓴다(두 탭에서 동시에 풀어도 기록을 잃지 않음)
   // 패스는 틀린 것으로 센다(w+1, last=0)고 패스 횟수 p를 따로 쌓는다. lk: 최근 결과 o 맞음, x 틀림, p 패스, g 찍어서 맞음
   STATS = V.update(localStorage, K.stats, v => V.stats(v, hasQ), V.mergeStats, STATS, all => {
@@ -340,9 +344,20 @@ function setGuess(on){
   save(K.sess, S);
   toast(on ? "오답노트에 넣었습니다." : "오답노트에서 뺐습니다.");
 }
+// 패스 취소: 기록(w·p·last·lk)을 패스 전 값으로 되돌리고 다시 답을 고르게 한다. 패스한 그 화면에서만
+function undoPass(){
+  if(!S || !S.passUndo || S.passUndo.i !== S.i || S.ans[S.i] !== PASS) return;
+  const q = Q[S.items[S.i].qid], prev = S.passUndo.prev;
+  STATS = V.update(localStorage, K.stats, v => V.stats(v, hasQ), V.mergeStats, STATS, all => {
+    // 시각(t)은 지금으로 둔다. 다른 탭이 가진 패스 기록보다 새로워야 병합 때 되살아나지 않는다
+    if(prev) all[q.id] = Object.assign({}, prev, {t: Date.now()}); else delete all[q.id];
+  });
+  delete S.ans[S.i]; delete S.passUndo;
+  save(K.sess, S); renderQuiz();
+}
 function next(){
   if(!S || S.ans[S.i] === undefined) return;
-  S.i = S.i + 1; save(K.sess, S); renderQuiz();
+  delete S.passUndo; S.i = S.i + 1; save(K.sess, S); renderQuiz();
 }
 
 /* ---------- result ---------- */
@@ -430,6 +445,7 @@ function renderReview(){
   let h = `<section class="card hero">
     <h1 class="review-h">${T("오답 분석", "재확인 현황")}</h1>
     <p class="muted small">${T("지금까지 틀린 횟수(패스 포함)로 묶었습니다. 묶음마다 다시 풀 수 있습니다.", "불일치 횟수로 묶었습니다. 묶음마다 다시 볼 수 있습니다.")}</p>
+    <p class="small rv-basis">${T(`오답노트는 최근에 틀린 문제 기준(${wrongIds().length}문제), 오답 분석은 누적으로 틀린 횟수 기준(${recs.length}문제)입니다.`, `재확인은 최근 불일치 기준(${wrongIds().length}건), 이 현황은 누적 불일치 횟수 기준(${recs.length}건)입니다.`)}</p>
   </section>`;
   if(!recs.length) h += `<p class="empty card">${T("아직 틀린 문제가 없습니다.", "아직 재확인할 항목이 없습니다.")}</p>`;
   else {
@@ -686,9 +702,9 @@ document.addEventListener("keydown", e => {
   const q = Q[S.items[S.i].qid], done = S.ans[S.i] !== undefined, k = e.key.toLowerCase();
   if(!done && q.type === "ox" && (k === "o" || k === "x")){ e.preventDefault(); answer(k === "o"); }
   else if(!done && q.type === "mc" && /^[1-4]$/.test(k)){ e.preventDefault(); answer(S.items[S.i].order[+k - 1]); }
-  else if(!done && (k === "0" || k === "p")){ e.preventDefault(); answer(PASS); }
+  else if(!done && (k === "0" || k === "p" || k === "ㅔ" || e.code === "KeyP")){ e.preventDefault(); answer(PASS); }   // 한글 자판의 P는 ㅔ
   else if(done && (k === "enter" || k === "arrowright")){ e.preventDefault(); next(); }
-  else if(k === "arrowleft" && S.i){ S.i--; save(K.sess, S); renderQuiz(); }
+  else if(k === "arrowleft" && S.i){ delete S.passUndo; S.i--; save(K.sess, S); renderQuiz(); }
 });
 
 // 다른 탭이 기록을 바꾸면 메모리 값과 합친다. 빈 값이면(기록 지우기) 이 탭도 비운다.

@@ -345,7 +345,13 @@ body.covered{overflow:hidden}
 :root{--fg:var(--ink)}
 .explain .concept{margin:0 0 12px;padding:10px 12px;border-radius:10px;background:var(--surface);border:1px solid var(--line)}
 .explain .concept h3{margin:0 0 4px;color:var(--accent)}
-.fx{margin:8px 0;padding:8px 10px;border-radius:8px;background:var(--surface);font:600 .92rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;text-align:center;white-space:pre;overflow-x:auto}
+/* 가로로 넘치면 가장자리에 그림자가 생겨 스크롤할 수 있음을 알린다(내용과 함께 움직이는 덮개 + 고정 그림자) */
+.fx{--fxs:color-mix(in srgb,var(--ink) 28%,transparent);margin:8px 0;padding:8px 10px;border-radius:8px;
+  background:linear-gradient(to right,var(--surface) 40%,transparent) left/24px 100% no-repeat local,
+    linear-gradient(to left,var(--surface) 40%,transparent) right/24px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%,var(--fxs),transparent) left/12px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%,var(--fxs),transparent) right/12px 100% no-repeat scroll,
+    var(--surface);font:600 .92rem/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;text-align:center;white-space:pre;overflow-x:auto}
 .figbox{margin:0 0 12px;padding:10px;border-radius:10px;background:var(--surface);border:1px solid var(--line);color:var(--fg)}
 .fig-svg{overflow-x:auto}
 /* 좁은 화면: 그림 글자가 12px 이상이려면 그림 폭이 300px 이상이어야 한다(viewBox 340, 글자 13~16 단위).

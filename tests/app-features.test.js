@@ -117,3 +117,39 @@ test("앱: 계산 문제·일반 문제 모두 문제 영역으로 용어집 뜻
   startQuiz(app); app.key("1");
   assert.ok(app.view().includes("(테스트용 PD)"));
 });
+
+test("한글 자판: ㅔ와 e.code KeyP도 패스", () => {
+  const app = boot({"tuunsa-session": sess("s1_tax_001")});
+  startQuiz(app); app.key("ㅔ", "KeyP");
+  assert.strictEqual(app.stats().s1_tax_001.p, 1);
+  app.key("Enter"); app.key("Process", "KeyP");   // 조합 중인 키도 code로 판정
+  assert.strictEqual(app.stats().s1_tax_002.p, 1);
+});
+test("패스 취소: 기록을 패스 전 값으로 되돌리고 다시 고를 수 있다", () => {
+  const before = {s1_tax_001:{c:2, w:1, last:1, t:5, lk:"o"}};
+  const app = boot({"tuunsa-stats": JSON.stringify(before), "tuunsa-session": sess("s1_tax_001")});
+  startQuiz(app); app.key("p");
+  assert.ok(app.view().includes('id="unpass"'));
+  assert.deepStrictEqual([app.stats().s1_tax_001.w, app.stats().s1_tax_001.p], [2, 1]);
+  app.els.unpass.onclick();
+  const st = app.stats().s1_tax_001;
+  assert.deepStrictEqual([st.c, st.w, st.last, st.lk, st.p], [2, 1, 1, "o", undefined]);
+  const ss = JSON.parse(app.store["tuunsa-session"]);
+  assert.strictEqual(ss.ans[0], undefined); assert.strictEqual(ss.passUndo, undefined);
+  assert.ok(app.view().includes('id="pass"') && !app.view().includes('id="unpass"'), "다시 고르는 화면");
+  app.key("1");
+  assert.deepStrictEqual([app.stats().s1_tax_001.c, app.stats().s1_tax_001.w], [3, 1]);
+});
+test("패스 취소: 처음 푼 문제면 기록을 지운다, 다음 문제로 넘어가면 취소할 수 없다", () => {
+  const app = boot({"tuunsa-session": sess("s1_tax_001")});
+  startQuiz(app); app.key("p"); app.els.unpass.onclick();
+  assert.strictEqual(app.stats().s1_tax_001, undefined);
+  app.key("p"); app.key("Enter"); app.key("ArrowLeft");
+  assert.ok(!app.view().includes('id="unpass"'), "넘어갔다 돌아오면 취소 버튼 없음");
+  assert.strictEqual(JSON.parse(app.store["tuunsa-session"]).passUndo, undefined);
+});
+test("오답 분석: 오답노트와 개수 기준을 한 줄로 설명하고 두 개수를 함께 보인다", () => {
+  const app = boot({"tuunsa-stats": JSON.stringify(many)}, {hash:"#review"});
+  // last 0인 기록 3개(오답노트), w>0인 기록 4개(오답 분석)
+  assert.ok(text(app.view()).includes("오답노트는 최근에 틀린 문제 기준(3문제), 오답 분석은 누적으로 틀린 횟수 기준(4문제)입니다."));
+});

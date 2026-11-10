@@ -11,19 +11,19 @@ const MODES = ["area", "subject", "calc", "wrong", "mock"];
 
 // 문제별 기록 {c, w, last, t} + 선택 필드 p(패스 횟수), g(찍어서 맞힘 횟수), lk(최근 결과 o·x·p·g)
 const LK = ["o", "x", "p", "g"];
+// 기록 하나. 형식이 틀리면 null
+function rec(s){
+  if(!isObj(s) || !isInt(s.c, 0, MAX) || !isInt(s.w, 0, MAX) || (s.last !== 0 && s.last !== 1)) return null;
+  const r = {c:s.c, w:s.w, last:s.last, t: Number.isFinite(s.t) && s.t >= 0 ? s.t : 0};
+  if(isInt(s.p, 0, MAX)) r.p = s.p;
+  if(isInt(s.g, 0, MAX)) r.g = s.g;
+  if(LK.indexOf(s.lk) >= 0) r.lk = s.lk;
+  return r;
+}
 function stats(v, has){
   const out = {};
   if(!isObj(v)) return out;
-  Object.keys(v).forEach(id => {
-    const s = v[id];
-    if(!has(id) || !isObj(s)) return;
-    if(!isInt(s.c, 0, MAX) || !isInt(s.w, 0, MAX) || (s.last !== 0 && s.last !== 1)) return;
-    const r = {c:s.c, w:s.w, last:s.last, t: Number.isFinite(s.t) && s.t >= 0 ? s.t : 0};
-    if(isInt(s.p, 0, MAX)) r.p = s.p;
-    if(isInt(s.g, 0, MAX)) r.g = s.g;
-    if(LK.indexOf(s.lk) >= 0) r.lk = s.lk;
-    out[id] = r;
-  });
+  Object.keys(v).forEach(id => { const r = has(id) ? rec(v[id]) : null; if(r) out[id] = r; });
   return out;
 }
 function opts(v){
@@ -61,6 +61,9 @@ function session(v, has, isMc){
   }
   const out = {mode:v.mode, title:v.title, items, i:v.i, ans, startedAt: Number.isFinite(v.startedAt) ? v.startedAt : 0};
   if(isInt(v.total, items.length, 1000)) out.total = v.total;   // 중간에 그만둔 경우 원래 문항 수
+  // 패스 취소용 {i: 패스한 문항 번호, prev: 패스 전 기록 또는 null}. 그 문항이 패스 상태일 때만
+  if(isObj(v.passUndo) && isInt(v.passUndo.i, 0, items.length - 1) && ans[v.passUndo.i] === -1 &&
+    (v.passUndo.prev === null || rec(v.passUndo.prev))) out.passUndo = {i: v.passUndo.i, prev: v.passUndo.prev === null ? null : rec(v.passUndo.prev)};
   // 찍어서 맞힘 표시 {문항 번호: true}. 답한 문항만
   if(isObj(v.guess)){
     const g = {};

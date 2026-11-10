@@ -91,3 +91,8 @@ test("그림 허용 목록: 디자인팀 요소·속성만 남기고 class 색�
   ["polyline", 'class="ac"', 'stroke-dasharray="3 2"', 'text-anchor="middle"', 'dominant-baseline="middle"', "<tspan", 'class="f-ok"', 'rx="2"', '<path d="M0 0"/>'].forEach(t => assert.ok(s.includes(t), t));
   ["style", "url(", "<a", "<circle", "<image", "<use", "<!--", "<defs", "evil"].forEach(t => assert.ok(!s.includes(t), t + " 남음: " + s));
 });
+test("공식 상자: 가로로 넘칠 때 가장자리 그림자 단서(스크롤과 함께 움직이는 덮개)", () => {
+  const css = require("fs").readFileSync(require("path").join(__dirname, "..", "style.css"), "utf8");
+  const rule = css.slice(css.indexOf(".fx{"), css.indexOf("}", css.indexOf(".fx{")));
+  assert.ok(/no-repeat local/.test(rule) && /no-repeat scroll/.test(rule) && /overflow-x:auto/.test(rule));
+});
